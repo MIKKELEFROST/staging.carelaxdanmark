@@ -178,3 +178,165 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
 .footer-l{display:flex;align-items:center;gap:22px}
 .footer-l img{height:36px}
 .footer-r{display:flex;gap:20px}
+
+/* ===== Responsivt: desktop (≥1240px) er uændret ===== */
+.m-actions{display:none}
+.reviews-hint{display:none}
+
+/* Små laptops/tablets i landskab: ingen vandret scroll, luft i siderne */
+@media (max-width:1239px){
+  .page{min-width:0}
+  .wrap{padding-left:24px;padding-right:24px}
+  .nav{gap:16px;font-size:13px}
+  .nav-tel{padding-left:16px}
+  .hero .wrap{gap:48px;grid-template-columns:minmax(0,1fr) 440px;padding-left:24px;padding-right:24px}
+  .stats .wrap{padding-left:24px;padding-right:24px;gap:48px}
+  .benefits .wrap{grid-template-columns:minmax(0,440px) minmax(0,1fr);gap:64px}
+  .photo-badge{right:-20px}
+  .input{width:100%;min-width:0}
+  .row2{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}
+}
+
+/* Tablet og mobil */
+@media (max-width:900px){
+  body{font-size:15px}
+  .h2{font-size:32px;line-height:1.2}
+  .eyebrow{font-size:12px}
+
+  /* Header + mobilmenu */
+  .header{position:relative;z-index:40}
+  .header .wrap{height:64px}
+  .header .logo{height:36px}
+  .m-actions{display:flex;align-items:center;gap:8px}
+  .m-call,.nav-toggle{width:44px;height:44px;border-radius:8px;border:1px solid #333;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+  .nav-toggle{flex-direction:column;gap:5px}
+  .nav-toggle span{display:block;width:20px;height:2px;background:#fff;border-radius:1px;transition:transform .2s,opacity .2s}
+  .header.open .nav-toggle span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+  .header.open .nav-toggle span:nth-child(2){opacity:0}
+  .header.open .nav-toggle span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+  .nav{display:none;position:absolute;top:64px;left:0;right:0;flex-direction:column;align-items:stretch;gap:0;background:#0d0d0d;border-top:1px solid #222;border-bottom:1px solid #222;padding:8px 24px 16px;font-size:16px;box-shadow:0 18px 40px rgba(0,0,0,.4)}
+  .header.open .nav{display:flex}
+  .nav a{padding:14px 0;border-bottom:1px solid #1e1e1e}
+  .nav .nav-active{align-self:flex-start;margin:10px 0;padding:8px 12px;border-bottom:2px solid #33b048}
+  .nav .nav-tel{border-left:0;padding-left:0;border-bottom:0}
+
+  /* Fast bjælke bliver en bund-bjælke med de to vigtigste handlinger */
+  .sticky{top:auto;bottom:0;border-bottom:0;border-top:1px solid #2a2a2a;box-shadow:0 -6px 24px rgba(0,0,0,.3);padding-bottom:env(safe-area-inset-bottom)}
+  .sticky .wrap{height:auto;padding-top:10px;padding-bottom:10px}
+  .sticky-l{display:none}
+  .sticky-r{width:100%;gap:10px}
+  .sticky-tel{flex:none;display:flex;align-items:center;justify-content:center;height:48px;padding:0 16px;border:1px solid #3a3a3a;border-radius:6px}
+  .sticky-cta{flex:1;text-align:center;height:48px;display:flex;align-items:center;justify-content:center;font-size:15px;border-radius:6px}
+
+  /* Hero: overskrift → tekst → formular → fordele → tillid */
+  .hero .wrap{display:flex;flex-direction:column;padding:32px 24px 48px;gap:0}
+  .hero-copy{display:contents}
+  .pill{order:1;align-self:flex-start;font-size:12px;padding:6px 12px}
+  .hero h1{order:2;margin-top:18px;font-size:40px;line-height:1.1;letter-spacing:-.3px}
+  .hero-lead{order:3;margin-top:16px;font-size:16px;line-height:1.65}
+  .card{order:4;margin-top:28px;width:100%;max-width:560px;align-self:center}
+  .hero-checks{order:5;margin-top:32px;gap:12px}
+  .hero-check{font-size:15px;align-items:flex-start}
+  .trust{order:6;margin-top:32px;padding-top:24px;flex-wrap:wrap;gap:18px 24px}
+  .trust-sep{display:none}
+  .trust-item{flex:1 1 40%}
+  .trust-tp{flex-basis:100%}
+
+  /* Formular */
+  .card-body{padding:24px 20px 22px}
+  .card-head h2{font-size:22px}
+  .input{font-size:16px;width:100%;min-width:0}
+  .row2{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}
+  .assure{flex-wrap:wrap;gap:8px 16px}
+  .card-foot{padding:14px 20px;flex-wrap:wrap;gap:4px 12px}
+  .thanks{padding:44px 24px}
+
+  /* Tal */
+  .stats .wrap{grid-template-columns:1fr 1fr;gap:28px 24px;padding:36px 24px}
+  .stat-n{font-size:40px}
+  .stats p{grid-column:1/-1;border-left:0;border-top:2px solid rgba(255,255,255,.4);padding-left:0;padding-top:20px;font-size:15px}
+
+  /* Sektioner generelt */
+  .steps{padding:64px 0}
+  .benefits,.reviews,.faq{padding:64px 0}
+  .press{padding:64px 0 72px}
+  .final{padding:56px 0}
+  .sec-head{flex-direction:column;align-items:flex-start;gap:20px}
+
+  /* Fire trin: lodret tidslinje */
+  .steps-grid{grid-template-columns:1fr;gap:0;margin-top:36px}
+  .steps-line{display:none}
+  .step{display:grid;grid-template-columns:60px 1fr;column-gap:18px;padding-bottom:28px}
+  .step:not(:last-child)::before{content:"";position:absolute;left:29px;top:60px;bottom:0;width:2px;background:repeating-linear-gradient(180deg,#cfe9d4 0 8px,transparent 8px 14px)}
+  .step:last-child{padding-bottom:0}
+  .step-n{grid-row:1/3;width:60px;height:60px;font-size:20px;position:relative;z-index:1}
+  .step h3{margin:14px 0 6px;font-size:19px}
+  .step p{font-size:15px}
+
+  /* Det får du */
+  .benefits .wrap{display:flex;flex-direction:column;gap:40px}
+  .benefits .wrap>div:last-child{order:-1}
+  .photo{width:100%;height:340px}
+  .photo-badge{right:12px;bottom:12px;padding:12px 16px}
+  .ben-list{margin-top:28px;gap:18px}
+  .ben{grid-template-columns:40px 1fr;gap:14px}
+  .ben-ico{width:40px;height:40px}
+  .ben b{font-size:16px}
+
+  /* Anmeldelser: widget kan swipes vandret */
+  .reviews .h2{margin:10px 0 28px;line-height:1.2}
+  .reviews .wrap{padding-left:0;padding-right:0}
+  .reviews .eyebrow,.reviews .h2{padding:0 24px}
+  .reviews-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:0 24px}
+  .reviews-scroll::-webkit-scrollbar{display:none}
+  .reviews img{width:960px;max-width:none}
+  .reviews-hint{display:block;margin-top:10px;font-size:12.5px;color:#888}
+
+  /* Sund Forskning */
+  .press-nav{display:none}
+  .press-track{margin:32px -24px 0;padding:0 24px 4px;gap:16px;scroll-snap-type:x mandatory;scroll-padding-left:24px}
+  .mag{width:180px;scroll-snap-align:start}
+  .mag img{width:180px;height:242px}
+  .mag-t{font-size:14px}
+
+  /* FAQ */
+  .faq .wrap{grid-template-columns:1fr;gap:28px}
+  .faq-q{font-size:17px;padding:20px 0;align-items:flex-start}
+  .faq-a{padding:0 0 20px;font-size:15px}
+
+  /* Afslutning + footer */
+  .final .wrap{flex-direction:column;align-items:stretch;text-align:center;gap:28px}
+  .final h2{font-size:32px}
+  .final p{font-size:16px}
+  .final-r{flex-direction:column-reverse;align-items:stretch;gap:16px}
+  .btn-big{display:block;text-align:center}
+  .footer{padding:32px 0 96px}
+  .footer .wrap{flex-direction:column;align-items:flex-start;gap:20px}
+  .footer-l{flex-direction:column;align-items:flex-start;gap:14px}
+  .footer-r{flex-wrap:wrap;gap:10px 20px}
+}
+
+/* Mobil */
+@media (max-width:560px){
+  .wrap{padding-left:16px;padding-right:16px}
+  .nav{padding-left:16px;padding-right:16px}
+  .hero .wrap{padding:24px 16px 40px}
+  .hero h1{font-size:33px}
+  .h2{font-size:28px}
+  .card{margin-top:24px}
+  .card-body{padding:22px 16px 20px}
+  .card-head h2{font-size:20px}
+  .step-no{white-space:nowrap;font-size:12px}
+  .card-foot{padding:14px 16px}
+  .row2{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+  .btn-primary{font-size:16px;height:56px}
+  .btn-row .btn-back{padding:0 16px}
+  .stat-n{font-size:34px}
+  .stats .wrap{gap:24px 16px;padding-left:16px;padding-right:16px}
+  .photo{height:280px}
+  .reviews .eyebrow,.reviews .h2{padding:0 16px}
+  .reviews-scroll{padding:0 16px}
+  .press-track{margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px;scroll-padding-left:16px}
+  .final h2{font-size:28px}
+  .sticky .wrap{padding-left:12px;padding-right:12px}
+}

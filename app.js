@@ -130,12 +130,21 @@
 
   renderPains(); render();
 
+  // Mobilmenu
+  var header = $('.header');
+  $('#navToggle').addEventListener('click', function () {
+    var open = header.classList.toggle('open');
+    this.setAttribute('aria-expanded', open);
+  });
+  $$('.nav a').forEach(function (a) { a.addEventListener('click', function () { header.classList.remove('open'); }); });
+
   // Scroll til formular
   var card = $('#book');
   $$('[data-to-form]').forEach(function (a) {
     a.addEventListener('click', function (e) {
       e.preventDefault();
-      window.scrollTo({ top: card.getBoundingClientRect().top + window.scrollY - 90, behavior: 'smooth' });
+      var offset = window.innerWidth <= 900 ? 12 : 90;
+      window.scrollTo({ top: card.getBoundingClientRect().top + window.scrollY - offset, behavior: 'smooth' });
     });
   });
 
