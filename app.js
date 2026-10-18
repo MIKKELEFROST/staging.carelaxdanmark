@@ -9,6 +9,17 @@
     press: q.get('press') !== '0'
   };
 
+  // Trustpilot TrustBox: indsæt Business Unit ID fra Trustpilot Business → Integrations → TrustBox.
+  // tags filtrerer anmeldelserne (kræver at anmeldelserne er tagget i Trustpilot).
+  var TRUSTPILOT = {
+    businessUnitId: '',
+    templateId: '54ad5defc6454f065c28af8b', // "Slider"
+    tags: 'seng',
+    stars: '4,5'
+  };
+  // Video med Simon: mp4-fil (fx assets/simon.mp4) eller et YouTube/Vimeo-link.
+  var VIDEO = { src: '', poster: '' };
+
   var PAINS = ['Ondt i ryggen', 'Nakke & skuldre', 'Lænd', 'Søvnløshed', 'Gammel madras'];
   var FAQS = [
     ['Er rygtjekket virkelig gratis?', 'Ja. Rygtjekket er helt gratis og uforpligtende. Du betaler intet for besøget, scanningen eller rådgivningen.'],
@@ -129,6 +140,43 @@
   });
 
   renderPains(); render();
+
+  // Trustpilot live-widget med fallback til billedet
+  if (TRUSTPILOT.businessUnitId) {
+    var tp = $('#tpLive');
+    tp.innerHTML = '<div class="trustpilot-widget" data-locale="da-DK" data-template-id="' + TRUSTPILOT.templateId +
+      '" data-businessunit-id="' + TRUSTPILOT.businessUnitId + '" data-style-height="240px" data-style-width="100%" data-theme="light"' +
+      (TRUSTPILOT.tags ? ' data-tags="' + TRUSTPILOT.tags + '"' : '') + ' data-stars="' + TRUSTPILOT.stars + '" data-review-languages="da">' +
+      '<a href="https://dk.trustpilot.com/review/carelaxdanmark.dk" target="_blank" rel="noopener">Trustpilot</a></div>';
+    tp.hidden = false;
+    $('#tpFallback').hidden = true;
+    $('.reviews-hint').hidden = true;
+    var tps = document.createElement('script');
+    tps.src = 'https://widget.trustpilot.com/bootstrap/v5/tp.widget.bootstrap.min.js';
+    tps.async = true;
+    document.head.appendChild(tps);
+  }
+
+  // Video med Simon
+  if (VIDEO.src) {
+    var frame = $('#videoFrame');
+    var yt = VIDEO.src.match(/(?:youtu\.be\/|v=|shorts\/)([\w-]{11})/);
+    var vm = VIDEO.src.match(/vimeo\.com\/(\d+)/);
+    if (yt || vm) {
+      var ifr = document.createElement('iframe');
+      ifr.src = yt ? 'https://www.youtube-nocookie.com/embed/' + yt[1] + '?rel=0' : 'https://player.vimeo.com/video/' + vm[1];
+      ifr.allow = 'autoplay; fullscreen; picture-in-picture';
+      ifr.allowFullscreen = true;
+      ifr.title = 'Simon fortæller om rygtjekket';
+      frame.appendChild(ifr);
+    } else {
+      var v = document.createElement('video');
+      v.src = VIDEO.src; v.controls = true; v.playsInline = true; v.preload = 'metadata';
+      if (VIDEO.poster) v.poster = VIDEO.poster;
+      frame.appendChild(v);
+    }
+    $('#videoSection').hidden = false;
+  }
 
   // Mobilmenu
   var header = $('.header');

@@ -50,7 +50,7 @@
       </div>
       <div class="trust">
         <a href="https://dk.trustpilot.com/review/carelaxdanmark.dk" target="_blank" rel="noopener" class="trust-item trust-tp">
-          <img src="assets/tp-top.webp" alt="Trustpilot">
+          <span class="tp-badge" aria-label="Fremragende – 5 stjerner på Trustpilot">Fremragende <span class="tp-stars"><i><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21.2l1.6-7L2 9.5l7.1-.6z"/></svg></i><i><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21.2l1.6-7L2 9.5l7.1-.6z"/></svg></i><i><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21.2l1.6-7L2 9.5l7.1-.6z"/></svg></i><i><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21.2l1.6-7L2 9.5l7.1-.6z"/></svg></i><i><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21.2l1.6-7L2 9.5l7.1-.6z"/></svg></i></span><span class="tp-logo"><svg width="14" height="14" viewBox="0 0 24 24" fill="#00b67a"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21.2l1.6-7L2 9.5l7.1-.6z"/></svg>Trustpilot</span></span>
           <span class="trust-sub">TrustScore 4.9 · 544 anmeldelser</span></a>
         <span class="trust-sep"></span>
         <div class="trust-item"><b>Børsen Gazelle</b><span class="trust-sub">Flere år i træk</span></div>
@@ -141,6 +141,18 @@
   </div>
 </section>
 
+<section class="video" id="videoSection" hidden>
+  <div class="wrap">
+    <div class="video-copy">
+      <div class="eyebrow">MØD SIMON – FYSIOTERAPEUT</div>
+      <h2 class="h2">Hør hvad der sker til et rygtjek</h2>
+      <p class="video-lead">Simon er fysioterapeut hos Carelax. På to minutter fortæller han, hvad vi kigger efter, og hvorfor madrassen betyder så meget for ryggen.</p>
+      <a href="#book" class="btn-dark" data-to-form>Book gratis rygtjek</a>
+    </div>
+    <div class="video-frame" id="videoFrame"></div>
+  </div>
+</section>
+
 <section class="benefits">
   <div class="wrap">
     <div class="photo">
@@ -171,7 +183,8 @@
   <div class="wrap">
     <div class="eyebrow">544 ANMELDELSER PÅ TRUSTPILOT</div>
     <h2 class="h2">Kunderne giver os 4.9 ud af 5</h2>
-    <div class="reviews-scroll"><img src="assets/tp-widget.webp" alt="Trustpilot anmeldelser"></div>
+    <div class="tp-live" id="tpLive" hidden></div>
+    <div class="reviews-scroll" id="tpFallback"><img src="assets/tp-widget.webp" alt="Trustpilot anmeldelser"></div>
     <span class="reviews-hint">Swipe for flere anmeldelser →</span>
   </div>
 </section>
