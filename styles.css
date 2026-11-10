@@ -176,12 +176,6 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
 .btn-big{background:#33b048;color:#fff;font-weight:800;font-size:17px;padding:19px 34px;border-radius:8px;box-shadow:0 8px 20px rgba(51,176,72,.35)}
 .btn-big:hover{background:#2b9a3e;color:#fff}
 
-/* Footer */
-.footer{background:var(--sand);color:var(--ink);padding:40px 0 30px;border-top:1px solid var(--line)}
-.footer .wrap{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted)}
-.footer-l{display:flex;align-items:center;gap:22px}
-.footer-l img{height:36px;filter:brightness(0)}
-.footer-r{display:flex;gap:20px}
 
 /* ===== Responsivt: desktop (≥1240px) er uændret ===== */
 .m-actions{display:none}
@@ -314,10 +308,7 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
   .final p{font-size:16px}
   .final-r{flex-direction:column-reverse;align-items:stretch;gap:16px}
   .btn-big{display:block;text-align:center}
-  .footer{padding:32px 0 96px}
-  .footer .wrap{flex-direction:column;align-items:flex-start;gap:20px}
-  .footer-l{flex-direction:column;align-items:flex-start;gap:14px}
-  .footer-r{flex-wrap:wrap;gap:10px 20px}
+
 }
 
 /* Mobil */
@@ -358,4 +349,67 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
   .video{padding:0 0 64px}
   .video .wrap{grid-template-columns:1fr;gap:28px}
   .tp-live{min-height:300px}
+}
+
+/* Footer – samme som carelaxdanmark.dk */
+.usp-bar{background:#222;height:54px}
+.usp-bar .wrap{height:100%;display:grid;grid-template-columns:repeat(5,1fr);align-items:center;color:#fff;font-size:13px;font-weight:700}
+.usp{display:flex;align-items:center;gap:8px}
+.usp img{width:28px;height:28px;margin:-2px}
+.footer{background:linear-gradient(90deg,#040404 0%,#161616 60%,#222 100%);padding:60px 0 22px;color:#fff}
+.footer a{color:#fff}
+.footer a:hover{color:#33b048}
+.footer-grid{display:grid;grid-template-columns:245px 245px 245px 245px 1fr;font-size:13px}
+.footer h4{margin:0 0 14px;font-family:Raleway,sans-serif;font-weight:700;font-size:17px}
+.f-contact{display:flex;flex-direction:column;line-height:28px;font-weight:600}
+.f-row{display:flex;align-items:center;gap:8px}
+.f-row svg{flex:none}
+.f-social{width:62px;margin-top:14px;display:block}
+.f-links{display:flex;flex-direction:column;line-height:27px;font-weight:600}
+.f-arrow{color:#33b048}
+.f-news input{width:220px;max-width:100%;background:transparent;border:0;border-bottom:1px solid #888;color:#fff;font:inherit;font-size:13px;padding:6px 0;outline:none}
+.f-news input::placeholder{color:#999}
+.f-news button{margin-top:14px;background:#33b048;color:#fff;border:0;font:inherit;font-weight:700;font-size:10px;padding:12px 20px;border-radius:2px;cursor:pointer}
+.f-badges{display:flex;flex-direction:column;align-items:flex-end}
+.f-gazelle{width:224px}
+.f-tp{align-self:flex-start;margin-left:40px;margin-top:6px}
+.f-tp img{width:164px;display:block}
+.footer-bottom{text-align:center;margin-top:72px}
+.f-pay{height:22px}
+.footer-bottom p{margin-top:14px;font-size:10.5px;color:#999}
+@media (max-width:1239px){
+  .footer-grid{grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:24px}
+  .usp-bar .wrap{padding-left:24px;padding-right:24px}
+}
+@media (max-width:900px){
+  .usp-bar{height:auto}
+  .usp-bar .wrap{grid-template-columns:repeat(3,auto);justify-content:center;gap:12px 24px;padding-top:14px;padding-bottom:14px;font-size:12.5px}
+  .footer{padding:44px 0 96px}
+  .footer-grid{grid-template-columns:1fr 1fr;gap:36px 24px}
+  .f-badges{grid-column:1/-1;align-items:flex-start}
+  .f-tp{margin-left:0}
+  .footer-bottom{margin-top:44px;padding:0 16px}
+}
+@media (max-width:560px){
+  .usp-bar .wrap{grid-template-columns:repeat(2,auto);justify-content:start}
+  .footer-grid{grid-template-columns:1fr}
+}
+
+/* Så simpelt er det (under formularen) */
+.hero-side{min-width:0}
+.simple{margin-top:20px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 26px 22px;box-shadow:0 14px 36px rgba(31,42,36,.07)}
+.simple h3{margin:0;font-family:Raleway,sans-serif;font-weight:800;font-size:21px}
+.simple ol{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:1fr;gap:8px}
+.simple li{display:flex;align-items:baseline;gap:8px;font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.2px;line-height:1.35}
+.simple li b{color:var(--green);flex:none}
+.zzz{color:var(--green);font-weight:800;letter-spacing:0}
+.zzz sup{font-size:.75em}
+@media (max-width:900px){
+  .hero-side{display:contents}
+  .simple{order:5;margin-top:20px;width:100%;max-width:560px;align-self:center}
+  .hero-checks{order:6}
+  .trust{order:7}
+}
+@media (max-width:560px){
+  .simple{padding:18px 18px 20px}
 }
