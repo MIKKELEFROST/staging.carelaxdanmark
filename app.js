@@ -20,6 +20,16 @@
   // Video med Simon: mp4-fil (fx assets/simon.mp4) eller et YouTube/Vimeo-link.
   var VIDEO = { src: '', poster: '' };
 
+  // Udvalgte seng- og rygrelaterede anmeldelser fra Trustpilot (vises indtil TrustBox er sat op)
+  var REVIEWS = [
+    { name: 'Bente Kristiansen', date: '22. okt. 2026', title: 'God og konstruktiv oplevelse',
+      text: 'Jeg havde besøg af Samuel fra Carelax, der foretog en rygmåling. Denne viste en skæv ryg. Vi blev enige i, at jeg skulle investere i en ny seng med specialmadras. Resultatet er bare fantastisk. Jeg sover igennem om natten uden problemer. I september foretog Samuel en ny scanning af ryggen – min ryg har nu rettet sig fra skæv til normal.' },
+    { name: 'Lisette Jespersen', date: '26. okt. 2026', title: 'Grundig information og scanning',
+      text: 'Grundig information og scanning af rygsøjle gjorde mig tryg ved at investere i god madras.' },
+    { name: 'Dan Madsen', date: '22. okt. 2026', title: 'Bedste investering',
+      text: 'Det er den bedste investering, jeg har gjort i mange år. Er kun ked af, jeg ikke har købt den madras tidligere.' }
+  ];
+
   var PAINS = ['Ondt i ryggen', 'Nakke & skuldre', 'Lænd', 'Søvnløshed', 'Gammel madras'];
   var FAQS = [
     ['Er rygtjekket virkelig gratis?', 'Ja. Rygtjekket er helt gratis og uforpligtende. Du betaler intet for besøget, scanningen eller rådgivningen.'],
@@ -141,7 +151,30 @@
 
   renderPains(); render();
 
-  // Trustpilot live-widget med fallback til billedet
+  // Glidende anmeldelser (dubleres så båndet kan køre i ring)
+  (function () {
+    var track = $('#rvTrack');
+    if (!track) return;
+    var star = '<svg width="12" height="12" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21.2l1.6-7L2 9.5l7.1-.6z"/></svg>';
+    function card(r, hidden) {
+      var c = el('article', 'rv-card');
+      if (hidden) c.setAttribute('aria-hidden', 'true');
+      var stars = el('div', 'rv-stars'); stars.innerHTML = Array(6).join('<i>' + star + '</i>');
+      c.appendChild(stars);
+      c.appendChild(el('h3', 'rv-title', r.title));
+      c.appendChild(el('p', 'rv-text', r.text));
+      var meta = el('div', 'rv-meta');
+      meta.appendChild(el('b', null, r.name));
+      meta.appendChild(el('span', null, r.date + ' · Trustpilot'));
+      c.appendChild(meta);
+      return c;
+    }
+    var set = REVIEWS.concat(REVIEWS);
+    set.forEach(function (r, i) { track.appendChild(card(r, false)); });
+    set.forEach(function (r) { track.appendChild(card(r, true)); });
+  })();
+
+  // Trustpilot live-widget med fallback til egne anmeldelser
   if (TRUSTPILOT.businessUnitId) {
     var tp = $('#tpLive');
     tp.innerHTML = '<div class="trustpilot-widget" data-locale="da-DK" data-template-id="' + TRUSTPILOT.templateId +
@@ -150,7 +183,6 @@
       '<a href="https://dk.trustpilot.com/review/carelaxdanmark.dk" target="_blank" rel="noopener">Trustpilot</a></div>';
     tp.hidden = false;
     $('#tpFallback').hidden = true;
-    $('.reviews-hint').hidden = true;
     var tps = document.createElement('script');
     tps.src = 'https://widget.trustpilot.com/bootstrap/v5/tp.widget.bootstrap.min.js';
     tps.async = true;
