@@ -18,7 +18,7 @@
     stars: '4,5'
   };
   // Video med Simon: mp4-fil (fx assets/simon.mp4) eller et YouTube/Vimeo-link.
-  var VIDEO = { src: '', poster: '' };
+  var VIDEO = { src: 'assets/simon.mp4', poster: 'assets/simon-poster.webp' };
 
   // Udvalgte seng- og rygrelaterede anmeldelser fra Trustpilot (vises indtil TrustBox er sat op)
   var REVIEWS = [
@@ -202,10 +202,24 @@
       ifr.title = 'Simon fortæller om rygtjekket';
       frame.appendChild(ifr);
     } else {
+      // Videoen har indbrændte undertekster, så den starter uden lyd og kører i ring
       var v = document.createElement('video');
-      v.src = VIDEO.src; v.controls = true; v.playsInline = true; v.preload = 'metadata';
+      v.src = VIDEO.src; v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'metadata';
+      v.setAttribute('playsinline', ''); v.setAttribute('aria-label', 'Simon fortæller om rygtjekket');
       if (VIDEO.poster) v.poster = VIDEO.poster;
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduce) v.controls = true; else v.autoplay = true;
       frame.appendChild(v);
+      var snd = el('button', 'vid-sound', 'Slå lyd til');
+      snd.type = 'button';
+      snd.setAttribute('aria-pressed', 'false');
+      snd.addEventListener('click', function () {
+        v.muted = !v.muted;
+        if (!v.muted) { v.currentTime = 0; v.play(); }
+        snd.setAttribute('aria-pressed', !v.muted);
+        snd.textContent = v.muted ? 'Slå lyd til' : 'Slå lyd fra';
+      });
+      frame.appendChild(snd);
     }
     $('#videoSection').hidden = false;
   }
