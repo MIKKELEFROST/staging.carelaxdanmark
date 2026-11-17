@@ -30,9 +30,9 @@
   var SYMPTOMS = [
     ['Stiv i lænden om morgenen', 'Det letter, når du har været oppe lidt'],
     ['Ondt i nakke eller skuldre', 'Især når du vågner'],
-    ['Du sover arm eller skulder', 'Og vågner med prikken i fingrene'],
+    ['Du sover på armen eller skulderen', 'Og vågner med prikken i fingrene'],
     ['Du vender dig hele natten', 'Og har svært ved at finde ro'],
-    ['Madrassen er over 8-10 år gammel', 'Eller har en tydelig fordybning'],
+    ['Madrassen er over 8–10 år gammel', 'Eller har en tydelig fordybning'],
     ['Du vågner træt', 'Selvom du har sovet længe nok']
   ];
   // Gener i trin 2 (skal matche listen i WordPress-kodestykket)

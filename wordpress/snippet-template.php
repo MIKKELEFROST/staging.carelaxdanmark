@@ -115,7 +115,7 @@ if ( ! defined( 'CARELAX_RYGTJEK_LOADED' ) ) {
 			$pick = function ( $key, $allowed ) use ( $p ) {
 				return array_values( array_intersect( $allowed, array_map( 'strval', isset( $p[ $key ] ) ? (array) $p[ $key ] : array() ) ) );
 			};
-			$symptomer = $pick( 'symptomer', array( 'Stiv i lænden om morgenen', 'Ondt i nakke eller skuldre', 'Du sover arm eller skulder', 'Du vender dig hele natten', 'Madrassen er over 8-10 år gammel', 'Du vågner træt' ) );
+			$symptomer = $pick( 'symptomer', array( 'Stiv i lænden om morgenen', 'Ondt i nakke eller skuldre', 'Du sover på armen eller skulderen', 'Du vender dig hele natten', 'Madrassen er over 8–10 år gammel', 'Du vågner træt' ) );
 			$gener     = $pick( 'gener', array( 'Ondt i ryggen', 'Nakke og skuldre', 'Lænd', 'Søvnløshed', 'Gammel madras' ) );
 
 			if ( mb_strlen( $navn ) < 2 || mb_strlen( $navn ) > 100 || 8 !== strlen( $tlf ) || 4 !== strlen( $post ) ) {

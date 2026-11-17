@@ -115,7 +115,7 @@ if ( ! defined( 'CARELAX_RYGTJEK_LOADED' ) ) {
 			$pick = function ( $key, $allowed ) use ( $p ) {
 				return array_values( array_intersect( $allowed, array_map( 'strval', isset( $p[ $key ] ) ? (array) $p[ $key ] : array() ) ) );
 			};
-			$symptomer = $pick( 'symptomer', array( 'Stiv i lænden om morgenen', 'Ondt i nakke eller skuldre', 'Du sover arm eller skulder', 'Du vender dig hele natten', 'Madrassen er over 8-10 år gammel', 'Du vågner træt' ) );
+			$symptomer = $pick( 'symptomer', array( 'Stiv i lænden om morgenen', 'Ondt i nakke eller skuldre', 'Du sover på armen eller skulderen', 'Du vender dig hele natten', 'Madrassen er over 8–10 år gammel', 'Du vågner træt' ) );
 			$gener     = $pick( 'gener', array( 'Ondt i ryggen', 'Nakke og skuldre', 'Lænd', 'Søvnløshed', 'Gammel madras' ) );
 
 			if ( mb_strlen( $navn ) < 2 || mb_strlen( $navn ) > 100 || 8 !== strlen( $tlf ) || 4 !== strlen( $post ) ) {
@@ -352,6 +352,15 @@ textarea.input{height:72px;padding:12px 14px;resize:none}
 .straight p{font-size:17px;color:#3f4a44;line-height:1.7}
 .straight p+p{margin-top:14px}
 
+/* Udvalgte Sund Forskning-artikler (v2) */
+.sf-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-top:48px}
+.sf-card{display:block;background:#fff;border:1px solid var(--line);border-radius:12px;padding:24px;color:var(--ink);transition:border-color .15s,box-shadow .15s}
+.sf-card:hover{color:var(--ink);border-color:var(--mint-b);box-shadow:0 10px 28px rgba(31,42,36,.06)}
+.sf-label{display:block;font-family:Raleway,sans-serif;font-weight:800;font-size:13px;letter-spacing:2px;color:#b3261e}
+.sf-card h3{margin:12px 0 0;font-family:Raleway,sans-serif;font-weight:800;font-size:18px;line-height:1.35}
+.sf-card:hover h3{color:var(--green-d)}
+.sf-date{display:block;margin-top:10px;font-size:13px;color:var(--muted)}
+
 /* Børsen Gazelle (v2): gazeller.svg er 188.2×73 med 2022/2023 øverst og 2024/2025 nederst.
    Hver boks viser én række (188.2×29.4). Nederste række starter ved y=43.6, dvs. 43.6/188.2 af bredden. */
 .gazelle{margin-top:64px;padding-top:48px;border-top:1px solid var(--line)}
@@ -514,7 +523,9 @@ textarea.input{height:72px;padding:12px 14px;resize:none}
   .mag img{width:180px;height:242px}
   .mag-t{font-size:14px}
 
-  /* Børsen Gazelle */
+  /* Sund Forskning-kort + Børsen Gazelle */
+  .sf-cards{grid-template-columns:minmax(0,1fr);gap:12px;margin-top:32px}
+  .sf-card{padding:20px}
   .gazelle{margin-top:48px;padding-top:40px}
   .gazelle h3{font-size:22px}
   .gazelle p{font-size:15px}
@@ -659,11 +670,11 @@ RYGTJEK_CSS_END;
       <div class="nav-item"><a href="https://carelaxdanmark.dk/produkt-kategori/massageapparater/">Massageapparater</a><button type="button" class="sub-toggle" aria-expanded="false" aria-label="Vis undermenu: Massageapparater"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
         <div class="sub"><a href="https://carelaxdanmark.dk/produkt-kategori/massageapparater/massagepistol/">Massagepistol</a><a href="https://carelaxdanmark.dk/produkt-kategori/massageapparater/fodmassageapparat/">Fodmassageapparat</a><a href="https://carelaxdanmark.dk/produkt-kategori/massageapparater/massagepuder/">Massagepuder</a></div></div>
       <div class="nav-item"><a href="https://carelaxdanmark.dk/produkt-kategori/senge/">Senge</a><button type="button" class="sub-toggle" aria-expanded="false" aria-label="Vis undermenu: Senge"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
-        <div class="sub"><a href="https://carelaxdanmark.dk/produkt-kategori/senge/">Senge</a><a href="https://carelaxdanmark.dk/produkt-kategori/senge/sengerammer/">Sengerammer</a><a href="https://carelaxdanmark.dk/produkt-kategori/senge/lamel-og-elevationsbunde/">Lamel- og Elevationsbunde</a><a href="https://carelaxdanmark.dk/produkt-kategori/senge/madrasser/">Madrasser</a><a href="https://carelaxdanmark.dk/ergonomisk-rygtjek/">Gratis ergonomisk rygtjek</a></div></div>
+        <div class="sub"><a href="https://carelaxdanmark.dk/produkt-kategori/senge/">Senge</a><a href="https://carelaxdanmark.dk/produkt-kategori/senge/sengerammer/">Sengerammer</a><a href="https://carelaxdanmark.dk/produkt-kategori/senge/lamel-og-elevationsbunde/">Lamel- og elevationsbunde</a><a href="https://carelaxdanmark.dk/produkt-kategori/senge/madrasser/">Madrasser</a><a href="https://carelaxdanmark.dk/ergonomisk-rygtjek/">Gratis ergonomisk rygtjek</a></div></div>
       <a href="https://carelaxdanmark.dk/ergonomisk-rygtjek/" class="nav-active" aria-current="page">Gratis ergonomisk rygtjek</a>
       <a href="https://carelaxdanmark.dk/erhverv/">Erhverv</a>
       <div class="nav-item"><a href="https://carelaxdanmark.dk/om-os/">Om os</a><button type="button" class="sub-toggle" aria-expanded="false" aria-label="Vis undermenu: Om os"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
-        <div class="sub"><a href="https://carelaxdanmark.dk/om-os/">Om os</a><a href="https://carelaxdanmark.dk/vores-team/">Vores velvære team</a><a href="https://carelaxdanmark.dk/kontakt/">Kontakt os</a><a href="https://carelaxdanmark.dk/bestil-tekniker/">Bestil tekniker</a></div></div>
+        <div class="sub"><a href="https://carelaxdanmark.dk/om-os/">Om os</a><a href="https://carelaxdanmark.dk/vores-team/">Vores velværeteam</a><a href="https://carelaxdanmark.dk/kontakt/">Kontakt os</a><a href="https://carelaxdanmark.dk/bestil-tekniker/">Bestil tekniker</a></div></div>
       <div class="nav-item"><a href="https://carelaxdanmark.dk/blog/">Viden</a><button type="button" class="sub-toggle" aria-expanded="false" aria-label="Vis undermenu: Viden"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
         <div class="sub"><a href="https://carelaxdanmark.dk/blog/">Blog</a><a href="https://carelaxdanmark.dk/ordbog/">Ordbog</a></div></div>
       <a href="tel:+4530554554" class="nav-tel"><svg width="14" height="14" viewBox="0 0 24 24" fill="#33b048"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg>30 554 554</a>
@@ -682,14 +693,14 @@ RYGTJEK_CSS_END;
       <h1>Vågner du med ondt i ryggen? Få et <span class="green">gratis rygtjek</span> hjemme hos dig.</h1>
       <p class="hero-lead">En fysioterapeut eller specialist i søvn kommer hjem til dig, laver en 3D-scanning af din ryg, vurderer din madras og giver dig konkrete råd til en bedre nattesøvn. Du skal ikke købe noget.</p>
       <div class="facts">
-        <span class="fact"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Ca. 45 min</span>
+        <span class="fact"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Ca. 45 min.</span>
         <span class="fact"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Hjemme hos dig, hele landet</span>
         <span class="fact"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg>0 kr.</span>
       </div>
       <p class="honest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/></svg><span>Vi er ærlige: Er din madras fin, siger vi det. Er den ikke, viser vi gerne, hvad der kan hjælpe. Du bestemmer selv.</span></p>
       <div class="trust">
         <a href="https://dk.trustpilot.com/review/carelaxdanmark.dk" target="_blank" rel="noopener" class="trust-item"><span class="stars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><b>4,9 på Trustpilot</b><span>551 anmeldelser</span></a>
-        <a href="https://borsen.dk/gazelle/" target="_blank" rel="noopener" class="trust-item"><b>Børsen Gazelle 4 år i træk</b><span>2022, 2023, 2024 og 2025</span></a>
+        <a href="https://borsen.dk/gazelle/" target="_blank" rel="noopener" class="trust-item"><b>Børsen Gazelle fire år i træk</b><span>2022, 2023, 2024 og 2025</span></a>
         <div class="trust-item"><b>Kendt fra Sund Forskning</b><span>11 artikler siden 2024</span></div>
       </div>
     </div>
@@ -698,7 +709,7 @@ RYGTJEK_CSS_END;
       <form id="form" novalidate>
         <div class="card-body" id="step1">
           <h2>Book dit gratis rygtjek</h2>
-          <p class="card-intro">Udfyld 3 felter. Vi ringer dig op inden for 24 timer på hverdage og finder et tidspunkt, der passer dig.</p>
+          <p class="card-intro">Udfyld tre felter. Vi ringer dig op inden for 24 timer på hverdage og finder et tidspunkt, der passer dig.</p>
           <div class="fields">
             <label class="field">Navn<input class="input" name="navn" autocomplete="name" placeholder="Fornavn og efternavn"></label>
             <div class="row2">
@@ -709,7 +720,7 @@ RYGTJEK_CSS_END;
             <!-- Spamfælde: skjult felt, som kun robotter udfylder -->
             <label class="hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
           </div>
-          <div class="symbox" id="symBox" hidden><p>Dine svar sendes med, så specialisten kan forberede sig</p><ul id="symList"></ul></div>
+          <div class="symbox" id="symBox" hidden><p>Dine svar sendes med, så specialisten kan forberede sig:</p><ul id="symList"></ul></div>
           <p class="form-err" id="formErr" hidden>Tjek venligst navn, telefon (8 cifre) og postnummer (4 cifre).</p>
           <p class="form-err" id="sendErr" role="alert" hidden>Din booking blev ikke sendt. Prøv igen, eller ring på <a href="tel:+4530554554">30 554 554</a>.</p>
           <button type="submit" class="btn btn-primary" id="submit1">Book gratis rygtjek <span aria-hidden="true">→</span></button>
@@ -835,6 +846,13 @@ RYGTJEK_CSS_END;
     </div>
     <div class="press-track" id="pressTrack"></div>
 
+    <!-- Udvalgte artikler (v2) -->
+    <div class="sf-cards">
+      <a class="sf-card" href="https://sund-forskning.dk/artikler/faa-scannet-din-ryg-derhjemme/" target="_blank" rel="noopener"><span class="sf-label">SUND FORSKNING</span><h3>Få scannet din ryg derhjemme</h3><span class="sf-date">26. maj 2025</span></a>
+      <a class="sf-card" href="https://sund-forskning.dk/artikler/laendesmerter-taerer-pa-livskvaliteten/" target="_blank" rel="noopener"><span class="sf-label">SUND FORSKNING</span><h3>Lændesmerter tærer på livskvaliteten</h3><span class="sf-date">19. september 2024</span></a>
+      <a class="sf-card" href="https://sund-forskning.dk/artikler/madrassen-en-forskel-ved-osteoporose-og-rygsmerter/" target="_blank" rel="noopener"><span class="sf-label">SUND FORSKNING</span><h3>Madrassen: en forskel ved osteoporose og rygsmerter</h3><span class="sf-date">18. februar 2026</span></a>
+    </div>
+
     <!-- Børsen Gazelle (v2). Bruger sitets egen gazeller.svg (2×2) og viser de to rækker side om side -->
     <div class="gazelle">
       <div class="eyebrow">BØRSEN GAZELLE</div>
@@ -894,7 +912,7 @@ RYGTJEK_CSS_END;
     </div>
     <div>
       <h4>Tilmeld nyhedsbrev</h4>
-      <form class="f-news" onsubmit="return false"><input type="email" placeholder="Indtast din email" aria-label="Email"><div><button type="submit">TILMELD NYHEDSBREV</button></div></form>
+      <form class="f-news" onsubmit="return false"><input type="email" placeholder="Indtast din e-mail" aria-label="E-mail"><div><button type="submit">TILMELD NYHEDSBREV</button></div></form>
     </div>
     <div class="f-badges">
       <a href="https://borsen.dk/gazelle/" target="_blank" rel="noopener" class="f-gazelle-link"><img src="https://carelaxdanmark.dk/wp-content/uploads/gazeller.svg" class="f-gazelle" alt="Børsen Gazelle"></a>
@@ -942,9 +960,9 @@ RYGTJEK_BODY_END;
   var SYMPTOMS = [
     ['Stiv i lænden om morgenen', 'Det letter, når du har været oppe lidt'],
     ['Ondt i nakke eller skuldre', 'Især når du vågner'],
-    ['Du sover arm eller skulder', 'Og vågner med prikken i fingrene'],
+    ['Du sover på armen eller skulderen', 'Og vågner med prikken i fingrene'],
     ['Du vender dig hele natten', 'Og har svært ved at finde ro'],
-    ['Madrassen er over 8-10 år gammel', 'Eller har en tydelig fordybning'],
+    ['Madrassen er over 8–10 år gammel', 'Eller har en tydelig fordybning'],
     ['Du vågner træt', 'Selvom du har sovet længe nok']
   ];
   // Gener i trin 2 (skal matche listen i WordPress-kodestykket)
