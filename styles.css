@@ -32,8 +32,23 @@ input,textarea,button{font-family:inherit}
 .header .logo-link{display:block;line-height:0}
 .header .logo{height:46px;filter:brightness(0)}
 .nav{display:flex;align-items:center;gap:22px;font-size:14px;font-weight:600}
+.nav a{white-space:nowrap}
 .nav-active{border:2px solid #33b048;border-radius:3px;padding:6px 11px;font-weight:700}
 .nav-tel{display:flex;align-items:center;gap:8px;border-left:1px solid var(--line);padding-left:22px}
+/* Dropdowns i menuen (som på carelaxdanmark.dk) */
+.nav-item{position:relative}
+.sub-toggle{background:none;border:0;padding:0;margin:0 0 0 5px;cursor:pointer;color:inherit;display:inline-flex;align-items:center;justify-content:center}
+.sub-toggle svg{transition:transform .2s}
+.sub{display:none}
+@media (min-width:1121px){
+  .nav-item{display:flex;align-items:center;height:80px}
+  .nav-item:hover>a,.nav-item:hover>.sub-toggle,.nav-item:focus-within>a,.nav-item:focus-within>.sub-toggle{color:#33b048}
+  .sub{position:absolute;top:100%;left:0;z-index:60;min-width:250px;flex-direction:column;background:#fff;border-top:4px solid #33b048;box-shadow:0 18px 40px rgba(31,42,36,.14);padding:6px 0}
+  .nav-item:hover>.sub,.nav-item:focus-within>.sub,.nav-item.open>.sub{display:flex}
+  .nav-item:last-of-type .sub{left:auto;right:0}
+  .sub a{padding:11px 20px;font-weight:400;font-size:14.5px;color:var(--muted);white-space:nowrap}
+  .sub a:hover,.sub a:focus-visible{color:#33b048;background:var(--cream)}
+}
 
 /* Hero */
 .hero{position:relative;background:radial-gradient(ellipse at 12% 0%,#e3f2e5 0%,rgba(250,248,244,0) 55%),radial-gradient(ellipse at 100% 100%,#f1ebe1 0%,rgba(250,248,244,0) 50%),var(--cream);color:var(--ink);overflow:hidden}
@@ -195,13 +210,8 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
   .row2{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}
 }
 
-/* Tablet og mobil */
-@media (max-width:900px){
-  body{font-size:15px}
-  .h2{font-size:32px;line-height:1.2}
-  .eyebrow{font-size:12px}
-
-  /* Header + mobilmenu */
+/* Header: mobilmenu (hamburger) under 1120px, så menuen med dropdowns aldrig bliver for trang */
+@media (max-width:1120px){
   .header{position:relative;z-index:40}
   .header .wrap{height:64px}
   .header .logo{height:36px}
@@ -217,6 +227,22 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
   .nav a{padding:14px 0;border-bottom:1px solid #f0ece5}
   .nav .nav-active{align-self:flex-start;margin:10px 0;padding:8px 12px;border-bottom:2px solid #33b048}
   .nav .nav-tel{border-left:0;padding-left:0;border-bottom:0}
+  .nav{max-height:calc(100vh - 64px);overflow-y:auto}
+  .nav-item{display:flex;flex-wrap:wrap;align-items:center;border-bottom:1px solid #f0ece5}
+  .nav-item>a{flex:1;border-bottom:0}
+  .sub-toggle{width:44px;height:44px;margin:0;border-radius:8px}
+  .sub-toggle svg{width:14px;height:14px}
+  .nav-item.open>.sub-toggle svg{transform:rotate(180deg)}
+  .nav-item.open>.sub{display:flex;flex-direction:column;flex-basis:100%;padding:0 0 10px 14px}
+  .nav .sub a{padding:10px 0;border-bottom:0;font-size:15px;font-weight:400;color:var(--muted)}
+
+}
+
+/* Tablet og mobil */
+@media (max-width:900px){
+  body{font-size:15px}
+  .h2{font-size:32px;line-height:1.2}
+  .eyebrow{font-size:12px}
 
   /* Fast bjælke bliver en bund-bjælke med de to vigtigste handlinger */
   .sticky{top:auto;bottom:0;border-bottom:0;border-top:1px solid var(--line);box-shadow:0 -6px 24px rgba(31,42,36,.1);padding-bottom:env(safe-area-inset-bottom)}

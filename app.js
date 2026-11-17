@@ -234,6 +234,26 @@
   });
   $$('.nav a').forEach(function (a) { a.addEventListener('click', function () { header.classList.remove('open'); }); });
 
+  // Undermenuer: pilen åbner/lukker (mobil og touch). På desktop åbner de også ved hover.
+  var closeSubs = function (except) {
+    $$('.nav-item.open').forEach(function (it) {
+      if (it === except) return;
+      it.classList.remove('open');
+      $('.sub-toggle', it).setAttribute('aria-expanded', 'false');
+    });
+  };
+  $$('.sub-toggle').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var item = b.parentNode;
+      var open = !item.classList.contains('open');
+      closeSubs(item);
+      item.classList.toggle('open', open);
+      b.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  });
+  document.addEventListener('click', function (e) { if (!e.target.closest('.nav-item')) closeSubs(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSubs(); });
+
   // Scroll til formular
   var card = $('#book');
   $$('[data-to-form]').forEach(function (a) {

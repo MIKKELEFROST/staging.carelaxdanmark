@@ -108,8 +108,23 @@ input,textarea,button{font-family:inherit}
 .header .logo-link{display:block;line-height:0}
 .header .logo{height:46px;filter:brightness(0)}
 .nav{display:flex;align-items:center;gap:22px;font-size:14px;font-weight:600}
+.nav a{white-space:nowrap}
 .nav-active{border:2px solid #33b048;border-radius:3px;padding:6px 11px;font-weight:700}
 .nav-tel{display:flex;align-items:center;gap:8px;border-left:1px solid var(--line);padding-left:22px}
+/* Dropdowns i menuen (som på carelaxdanmark.dk) */
+.nav-item{position:relative}
+.sub-toggle{background:none;border:0;padding:0;margin:0 0 0 5px;cursor:pointer;color:inherit;display:inline-flex;align-items:center;justify-content:center}
+.sub-toggle svg{transition:transform .2s}
+.sub{display:none}
+@media (min-width:1121px){
+  .nav-item{display:flex;align-items:center;height:80px}
+  .nav-item:hover>a,.nav-item:hover>.sub-toggle,.nav-item:focus-within>a,.nav-item:focus-within>.sub-toggle{color:#33b048}
+  .sub{position:absolute;top:100%;left:0;z-index:60;min-width:250px;flex-direction:column;background:#fff;border-top:4px solid #33b048;box-shadow:0 18px 40px rgba(31,42,36,.14);padding:6px 0}
+  .nav-item:hover>.sub,.nav-item:focus-within>.sub,.nav-item.open>.sub{display:flex}
+  .nav-item:last-of-type .sub{left:auto;right:0}
+  .sub a{padding:11px 20px;font-weight:400;font-size:14.5px;color:var(--muted);white-space:nowrap}
+  .sub a:hover,.sub a:focus-visible{color:#33b048;background:var(--cream)}
+}
 
 /* Hero */
 .hero{position:relative;background:radial-gradient(ellipse at 12% 0%,#e3f2e5 0%,rgba(250,248,244,0) 55%),radial-gradient(ellipse at 100% 100%,#f1ebe1 0%,rgba(250,248,244,0) 50%),var(--cream);color:var(--ink);overflow:hidden}
@@ -271,13 +286,8 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
   .row2{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}
 }
 
-/* Tablet og mobil */
-@media (max-width:900px){
-  body{font-size:15px}
-  .h2{font-size:32px;line-height:1.2}
-  .eyebrow{font-size:12px}
-
-  /* Header + mobilmenu */
+/* Header: mobilmenu (hamburger) under 1120px, så menuen med dropdowns aldrig bliver for trang */
+@media (max-width:1120px){
   .header{position:relative;z-index:40}
   .header .wrap{height:64px}
   .header .logo{height:36px}
@@ -293,6 +303,22 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
   .nav a{padding:14px 0;border-bottom:1px solid #f0ece5}
   .nav .nav-active{align-self:flex-start;margin:10px 0;padding:8px 12px;border-bottom:2px solid #33b048}
   .nav .nav-tel{border-left:0;padding-left:0;border-bottom:0}
+  .nav{max-height:calc(100vh - 64px);overflow-y:auto}
+  .nav-item{display:flex;flex-wrap:wrap;align-items:center;border-bottom:1px solid #f0ece5}
+  .nav-item>a{flex:1;border-bottom:0}
+  .sub-toggle{width:44px;height:44px;margin:0;border-radius:8px}
+  .sub-toggle svg{width:14px;height:14px}
+  .nav-item.open>.sub-toggle svg{transform:rotate(180deg)}
+  .nav-item.open>.sub{display:flex;flex-direction:column;flex-basis:100%;padding:0 0 10px 14px}
+  .nav .sub a{padding:10px 0;border-bottom:0;font-size:15px;font-weight:400;color:var(--muted)}
+
+}
+
+/* Tablet og mobil */
+@media (max-width:900px){
+  body{font-size:15px}
+  .h2{font-size:32px;line-height:1.2}
+  .eyebrow{font-size:12px}
 
   /* Fast bjælke bliver en bund-bjælke med de to vigtigste handlinger */
   .sticky{top:auto;bottom:0;border-bottom:0;border-top:1px solid var(--line);box-shadow:0 -6px 24px rgba(31,42,36,.1);padding-bottom:env(safe-area-inset-bottom)}
@@ -532,8 +558,20 @@ RYGTJEK_CSS_END;
 <header class="header">
   <div class="wrap">
     <a href="https://carelaxdanmark.dk/" class="logo-link"><img class="logo" src="https://carelaxdanmark.dk/wp-content/uploads/carelaxdanmark-1-1.svg" alt="Carelax Danmark"></a>
-    <nav class="nav">
-      <a href="https://carelaxdanmark.dk/">Massagestole</a><a href="https://carelaxdanmark.dk/produkt-kategori/massageapparater/">Massageapparater</a><a href="https://carelaxdanmark.dk/produkt-kategori/senge/">Senge</a><a href="https://carelaxdanmark.dk/ergonomisk-rygtjek/" class="nav-active" aria-current="page">Gratis ergonomisk rygtjek</a><a href="https://carelaxdanmark.dk/erhverv/">Erhverv</a><a href="https://carelaxdanmark.dk/om-os/">Om os</a><a href="https://carelaxdanmark.dk/blog/">Viden</a>
+    <!-- Menuen svarer til hovedmenuen på carelaxdanmark.dk -->
+    <nav class="nav" aria-label="Hovedmenu">
+      <div class="nav-item"><a href="https://carelaxdanmark.dk/">Massagestole</a><button type="button" class="sub-toggle" aria-expanded="false" aria-label="Vis undermenu: Massagestole"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
+        <div class="sub"><a href="https://carelaxdanmark.dk/produkt-kategori/massagestole-pris/">Priser på nye massagestole</a><a href="https://carelaxdanmark.dk/produkt-kategori/brugt/">Brugte massagestole</a><a href="https://carelaxdanmark.dk/proev-gratis/">Prøv en stol</a></div></div>
+      <div class="nav-item"><a href="https://carelaxdanmark.dk/produkt-kategori/massageapparater/">Massageapparater</a><button type="button" class="sub-toggle" aria-expanded="false" aria-label="Vis undermenu: Massageapparater"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
+        <div class="sub"><a href="https://carelaxdanmark.dk/produkt-kategori/massageapparater/massagepistol/">Massagepistol</a><a href="https://carelaxdanmark.dk/produkt-kategori/massageapparater/fodmassageapparat/">Fodmassageapparat</a><a href="https://carelaxdanmark.dk/produkt-kategori/massageapparater/massagepuder/">Massagepuder</a></div></div>
+      <div class="nav-item"><a href="https://carelaxdanmark.dk/produkt-kategori/senge/">Senge</a><button type="button" class="sub-toggle" aria-expanded="false" aria-label="Vis undermenu: Senge"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
+        <div class="sub"><a href="https://carelaxdanmark.dk/produkt-kategori/senge/">Senge</a><a href="https://carelaxdanmark.dk/produkt-kategori/senge/sengerammer/">Sengerammer</a><a href="https://carelaxdanmark.dk/produkt-kategori/senge/lamel-og-elevationsbunde/">Lamel- og Elevationsbunde</a><a href="https://carelaxdanmark.dk/produkt-kategori/senge/madrasser/">Madrasser</a><a href="https://carelaxdanmark.dk/ergonomisk-rygtjek/">Gratis ergonomisk rygtjek</a></div></div>
+      <a href="https://carelaxdanmark.dk/ergonomisk-rygtjek/" class="nav-active" aria-current="page">Gratis ergonomisk rygtjek</a>
+      <a href="https://carelaxdanmark.dk/erhverv/">Erhverv</a>
+      <div class="nav-item"><a href="https://carelaxdanmark.dk/om-os/">Om os</a><button type="button" class="sub-toggle" aria-expanded="false" aria-label="Vis undermenu: Om os"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
+        <div class="sub"><a href="https://carelaxdanmark.dk/om-os/">Om os</a><a href="https://carelaxdanmark.dk/vores-team/">Vores velvære team</a><a href="https://carelaxdanmark.dk/kontakt/">Kontakt os</a><a href="https://carelaxdanmark.dk/bestil-tekniker/">Bestil tekniker</a></div></div>
+      <div class="nav-item"><a href="https://carelaxdanmark.dk/blog/">Viden</a><button type="button" class="sub-toggle" aria-expanded="false" aria-label="Vis undermenu: Viden"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
+        <div class="sub"><a href="https://carelaxdanmark.dk/blog/">Blog</a><a href="https://carelaxdanmark.dk/ordbog/">Ordbog</a></div></div>
       <a href="tel:+4578155703" class="nav-tel"><svg width="14" height="14" viewBox="0 0 24 24" fill="#33b048"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg>78 15 57 03</a>
     </nav>
     <div class="m-actions">
@@ -1009,6 +1047,26 @@ RYGTJEK_BODY_END;
     this.setAttribute('aria-expanded', open);
   });
   $$('.nav a').forEach(function (a) { a.addEventListener('click', function () { header.classList.remove('open'); }); });
+
+  // Undermenuer: pilen åbner/lukker (mobil og touch). På desktop åbner de også ved hover.
+  var closeSubs = function (except) {
+    $$('.nav-item.open').forEach(function (it) {
+      if (it === except) return;
+      it.classList.remove('open');
+      $('.sub-toggle', it).setAttribute('aria-expanded', 'false');
+    });
+  };
+  $$('.sub-toggle').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var item = b.parentNode;
+      var open = !item.classList.contains('open');
+      closeSubs(item);
+      item.classList.toggle('open', open);
+      b.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  });
+  document.addEventListener('click', function (e) { if (!e.target.closest('.nav-item')) closeSubs(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSubs(); });
 
   // Scroll til formular
   var card = $('#book');
