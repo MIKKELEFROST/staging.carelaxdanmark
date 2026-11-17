@@ -352,6 +352,16 @@ textarea.input{height:72px;padding:12px 14px;resize:none}
 .straight p{font-size:17px;color:#3f4a44;line-height:1.7}
 .straight p+p{margin-top:14px}
 
+/* Børsen Gazelle (v2): gazeller.svg er 188.2×73 med 2022/2023 øverst og 2024/2025 nederst.
+   Hver boks viser én række (188.2×29.4). Nederste række starter ved y=43.6, dvs. 43.6/188.2 af bredden. */
+.gazelle{margin-top:64px;padding-top:48px;border-top:1px solid var(--line)}
+.gazelle h3{margin:10px 0 0;font-family:Raleway,sans-serif;font-weight:800;font-size:28px;line-height:1.2}
+.gazelle p{margin-top:12px;color:var(--muted);font-size:16px}
+.gz-logos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 40px;margin-top:32px}
+.gz{aspect-ratio:188.2/29.4;overflow:hidden}
+.gz img{display:block;width:100%;height:auto}
+.gz-b img{margin-top:-23.1668%}
+
 /* FAQ (v2) */
 .faq-wrap{display:grid;grid-template-columns:380px minmax(0,1fr);gap:72px}
 .faq{border-top:1px solid #e0dacf}
@@ -504,6 +514,11 @@ textarea.input{height:72px;padding:12px 14px;resize:none}
   .mag img{width:180px;height:242px}
   .mag-t{font-size:14px}
 
+  /* Børsen Gazelle */
+  .gazelle{margin-top:48px;padding-top:40px}
+  .gazelle h3{font-size:22px}
+  .gazelle p{font-size:15px}
+
   /* FAQ */
   .faq-wrap{grid-template-columns:minmax(0,1fr);gap:24px}
   .faq summary{font-size:17px;padding:20px 44px 20px 0}
@@ -541,6 +556,7 @@ textarea.input{height:72px;padding:12px 14px;resize:none}
   .straight{padding:26px 20px}
   .straight h2{font-size:26px}
   .press-track{margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px;scroll-padding-left:16px}
+  .gz-logos{grid-template-columns:minmax(0,1fr);max-width:320px}
   .final h2{font-size:28px}
   .sticky .wrap{padding-left:12px;padding-right:12px}
 }
@@ -818,6 +834,17 @@ RYGTJEK_CSS_END;
       </div>
     </div>
     <div class="press-track" id="pressTrack"></div>
+
+    <!-- Børsen Gazelle (v2). Bruger sitets egen gazeller.svg (2×2) og viser de to rækker side om side -->
+    <div class="gazelle">
+      <div class="eyebrow">BØRSEN GAZELLE</div>
+      <h3>Fire år i træk blandt Danmarks hurtigst voksende virksomheder</h3>
+      <p>Tak til de mange kunder, der har valgt os. Det er jer, der har gjort væksten mulig.</p>
+      <div class="gz-logos" role="img" aria-label="Børsen Gazelle 2022, 2023, 2024 og 2025">
+        <div class="gz"><img src="https://carelaxdanmark.dk/wp-content/uploads/gazeller.svg" alt="" loading="lazy"></div>
+        <div class="gz gz-b"><img src="https://carelaxdanmark.dk/wp-content/uploads/gazeller.svg" alt="" loading="lazy"></div>
+      </div>
+    </div>
   </div>
 </section>
 
