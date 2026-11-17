@@ -629,7 +629,7 @@ RYGTJEK_CSS_END;
 <div class="sticky" id="sticky" hidden>
   <div class="wrap">
     <div class="sticky-l"><img src="https://carelaxdanmark.dk/wp-content/uploads/carelaxdanmark-1-1.svg" alt="Carelax"><span class="sticky-sep"></span><span style="font-weight:700">Gratis ergonomisk rygtjek</span><span class="sticky-sub">· Vi kommer til dig · 100 % uforpligtende</span></div>
-    <div class="sticky-r"><a href="tel:+4578155703" class="sticky-tel">78 15 57 03</a><a href="#book" class="sticky-cta" data-to-form>Book gratis rygtjek</a></div>
+    <div class="sticky-r"><a href="tel:+4530554554" class="sticky-tel">30 554 554</a><a href="#book" class="sticky-cta" data-to-form>Book gratis rygtjek</a></div>
   </div>
 </div>
 
@@ -650,10 +650,10 @@ RYGTJEK_CSS_END;
         <div class="sub"><a href="https://carelaxdanmark.dk/om-os/">Om os</a><a href="https://carelaxdanmark.dk/vores-team/">Vores velvære team</a><a href="https://carelaxdanmark.dk/kontakt/">Kontakt os</a><a href="https://carelaxdanmark.dk/bestil-tekniker/">Bestil tekniker</a></div></div>
       <div class="nav-item"><a href="https://carelaxdanmark.dk/blog/">Viden</a><button type="button" class="sub-toggle" aria-expanded="false" aria-label="Vis undermenu: Viden"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
         <div class="sub"><a href="https://carelaxdanmark.dk/blog/">Blog</a><a href="https://carelaxdanmark.dk/ordbog/">Ordbog</a></div></div>
-      <a href="tel:+4578155703" class="nav-tel"><svg width="14" height="14" viewBox="0 0 24 24" fill="#33b048"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg>78 15 57 03</a>
+      <a href="tel:+4530554554" class="nav-tel"><svg width="14" height="14" viewBox="0 0 24 24" fill="#33b048"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg>30 554 554</a>
     </nav>
     <div class="m-actions">
-      <a href="tel:+4578155703" class="m-call" aria-label="Ring 78 15 57 03"><svg width="18" height="18" viewBox="0 0 24 24" fill="#33b048"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg></a>
+      <a href="tel:+4530554554" class="m-call" aria-label="Ring 30 554 554"><svg width="18" height="18" viewBox="0 0 24 24" fill="#33b048"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg></a>
       <button type="button" class="nav-toggle" id="navToggle" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
     </div>
   </div>
@@ -695,7 +695,7 @@ RYGTJEK_CSS_END;
           </div>
           <div class="symbox" id="symBox" hidden><p>Dine svar sendes med, så specialisten kan forberede sig</p><ul id="symList"></ul></div>
           <p class="form-err" id="formErr" hidden>Tjek venligst navn, telefon (8 cifre) og postnummer (4 cifre).</p>
-          <p class="form-err" id="sendErr" role="alert" hidden>Din booking blev ikke sendt. Prøv igen, eller ring på <a href="tel:+4578155703">78 15 57 03</a>.</p>
+          <p class="form-err" id="sendErr" role="alert" hidden>Din booking blev ikke sendt. Prøv igen, eller ring på <a href="tel:+4530554554">30 554 554</a>.</p>
           <button type="submit" class="btn btn-primary" id="submit1">Book gratis rygtjek <span aria-hidden="true">→</span></button>
           <div class="assure"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Koster 0 kr.</span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Ingen købsforpligtelse</span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Hele landet</span></div>
           <p class="privacy">Vi bruger kun dine oplysninger til at kontakte dig om rygtjekket. <a href="https://carelaxdanmark.dk/privatlivspolitik/" target="_blank" rel="noopener">Privatlivspolitik</a></p>
@@ -722,7 +722,7 @@ RYGTJEK_CSS_END;
           <button type="button" class="link-btn" id="reset">Lav en ny booking</button>
         </div>
       </form>
-      <div class="card-foot"><span>Hellere tale med os nu?</span><a href="tel:+4578155703">Ring 78 15 57 03</a></div>
+      <div class="card-foot"><span>Hellere tale med os nu?</span><a href="tel:+4530554554">Ring 30 554 554</a></div>
     </div>
   </div>
 </section>
@@ -826,7 +826,7 @@ RYGTJEK_CSS_END;
     <div class="sec-intro">
       <div class="eyebrow">SPØRGSMÅL &amp; SVAR</div>
       <h2 class="h2">Det spørger folk typisk om</h2>
-      <p class="lead">Fandt du ikke svaret? Ring på <a href="tel:+4578155703"><b>78 15 57 03</b></a>.</p>
+      <p class="lead">Fandt du ikke svaret? Ring på <a href="tel:+4530554554"><b>30 554 554</b></a>.</p>
     </div>
     <div class="faq">
       <details open><summary>Er rygtjekket virkelig gratis?</summary><p>Ja. Rygtjekket er helt gratis og uforpligtende. Du betaler intet for besøget, scanningen eller rådgivningen.</p></details>
@@ -843,7 +843,7 @@ RYGTJEK_CSS_END;
   <div class="wrap">
     <div><h2>Klar til en bedre nattesøvn?</h2><p>Det tager 30 sekunder at booke. Vi ringer og aftaler resten.</p></div>
     <div class="final-r">
-      <a href="tel:+4578155703" class="final-tel">eller ring 78 15 57 03</a>
+      <a href="tel:+4530554554" class="final-tel">eller ring 30 554 554</a>
       <a href="#book" class="btn-big" data-to-form>Book gratis rygtjek</a>
     </div>
   </div>
@@ -854,7 +854,7 @@ RYGTJEK_CSS_END;
   <div class="wrap footer-grid">
     <div>
       <h4>Carelax Danmark ApS</h4>
-      <div class="f-contact"><div class="f-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M12 3 2 12h3v8h5v-6h4v6h5v-8h3z"/></svg><span>Naverland 25, 2600 Glostrup</span></div><div class="f-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg><span><a href="tel:+4578155703">+45 78 15 57 03</a></span></div><div class="f-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 1 0 5 18.7l-1-1.7A8 8 0 1 1 20 12v1.5a1.5 1.5 0 0 1-3 0V12a5 5 0 1 0-1.5 3.5A3.5 3.5 0 0 0 22 13.5V12A10 10 0 0 0 12 2zm0 13a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg><span><a href="mailto:info@carelaxdanmark.dk">Skriv til os her</a></span></div><div class="f-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2zm0-8h-2V7h2z"/></svg><span>CVR: 38219499</span></div></div>
+      <div class="f-contact"><div class="f-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M12 3 2 12h3v8h5v-6h4v6h5v-8h3z"/></svg><span>Naverland 25, 2600 Glostrup</span></div><div class="f-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg><span><a href="tel:+4530554554">+45 30 554 554</a></span></div><div class="f-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 1 0 5 18.7l-1-1.7A8 8 0 1 1 20 12v1.5a1.5 1.5 0 0 1-3 0V12a5 5 0 1 0-1.5 3.5A3.5 3.5 0 0 0 22 13.5V12A10 10 0 0 0 12 2zm0 13a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg><span><a href="mailto:info@carelaxdanmark.dk">Skriv til os her</a></span></div><div class="f-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2zm0-8h-2V7h2z"/></svg><span>CVR: 38219499</span></div></div>
       <div class="f-social"><img src="{{RYGTJEK_ASSETS}}rygtjek-f-social.png" alt=""><a href="https://www.facebook.com/CarelaxDk/" target="_blank" rel="noopener" aria-label="Carelax på Facebook"></a><a href="https://www.instagram.com/carelaxdk/" target="_blank" rel="noopener" aria-label="Carelax på Instagram"></a></div>
     </div>
     <div>
