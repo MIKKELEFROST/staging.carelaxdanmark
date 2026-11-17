@@ -157,6 +157,21 @@
     ['#step1', '#step2', '#step3'].forEach(function (id, i) { $(id).hidden = i !== n - 1; });
   }
 
+  // Konverteringer, når en booking er sendt. Id'erne kommer fra WordPress-kodestykket
+  // (window.CARELAX_RYGTJEK.tracking); uden dem (fx Vercel-demoen) sendes intet.
+  function trackBooking() {
+    var t = window.CARELAX_RYGTJEK && window.CARELAX_RYGTJEK.tracking;
+    if (!t) return;
+    try {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ event: 'rygtjek_lead', rygtjek_symptomer: symSel.length });
+      var gtag = window.gtag || function () { window.dataLayer.push(arguments); };
+      if (t.ga4) gtag('event', 'rygtjek_lead', { send_to: t.ga4 });
+      if (t.ads) gtag('event', 'conversion', { send_to: t.ads });
+      if (typeof window.fbq === 'function') (t.meta || []).forEach(function (ev) { window.fbq('track', ev); });
+    } catch (err) { /* tracking må aldrig stoppe bookingen */ }
+  }
+
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     $('#sendErr').hidden = true;
@@ -170,6 +185,7 @@
     btn.disabled = true;
     post({ type: 'booking', navn: booking.navn, telefon: booking.telefon, postnummer: booking.postnummer, symptomer: symSel.slice() })
       .then(function () {
+        if (endpoint) trackBooking();
         $('#firstName').textContent = booking.navn.split(' ')[0];
         $('#thanksTlf').textContent = booking.telefon;
         showStep(2);

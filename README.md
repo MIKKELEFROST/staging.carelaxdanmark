@@ -12,6 +12,11 @@ Statisk landingsside (HTML/CSS/JS). Indholdet følger Bilals "Rygtjek landingpag
 - Uden endpoint (Vercel-demoen) virker formularen, men intet sendes.
 - Listerne `SYMPTOMS` og `PAINS` i `app.js` skal matche listerne i kodestykket.
 
+## Tracking (kun på WordPress)
+- Kodestykket indlæser GTM-T3H8WGW, fordi temaet ellers indsætter den i `header.php`, som siden ikke bruger. GA4/Google Ads-sidevisninger og Meta PageView kommer fra plugins via `wp_head()`.
+- Når en booking er sendt (trin 1), sendes: GA4 `rygtjek_lead` (key event), Google Ads "OMN | Rygtjek-lead", Meta `Lead` + `CompleteRegistration` og `dataLayer`-hændelsen `rygtjek_lead`. Id'erne står som konstanter øverst i `wordpress/snippet-template.php`.
+- Vercel-demoen sender ingen tracking.
+
 ## WordPress
 `python3 wordpress/build.py` bygger `wordpress/dist/carelax-rygtjek-snippet.php` (indsættes i Snippets) og `wordpress/dist/medier/` (filer med præfiks `rygtjek-` til Medier). Ret i `index.html`, `styles.css`, `app.js` eller `wordpress/snippet-template.php`, ikke i `dist`.
 

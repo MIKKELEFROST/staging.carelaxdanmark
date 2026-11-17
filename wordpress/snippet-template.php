@@ -17,6 +17,20 @@ if ( ! defined( 'CARELAX_RYGTJEK_LOADED' ) ) {
 		define( 'CARELAX_RYGTJEK_TEMPLATE', 'carelax-rygtjek-landingpage' );
 	}
 
+	// Tracking. Temaet indsætter GTM direkte i header.php, som denne side ikke bruger, så GTM indsættes her.
+	// Konverteringer ved en gennemført booking (trin 1): GA4-hændelsen rygtjek_lead (key event),
+	// Google Ads-konverteringen "OMN | Rygtjek-lead" og Meta Lead + CompleteRegistration (som den gamle formular).
+	// Sæt en konstant til '' i wp-config.php for at slå den del fra.
+	if ( ! defined( 'CARELAX_RYGTJEK_GTM' ) ) {
+		define( 'CARELAX_RYGTJEK_GTM', 'GTM-T3H8WGW' );
+	}
+	if ( ! defined( 'CARELAX_RYGTJEK_GA4' ) ) {
+		define( 'CARELAX_RYGTJEK_GA4', 'G-B9TK6QR2DJ' );
+	}
+	if ( ! defined( 'CARELAX_RYGTJEK_ADS_CONVERSION' ) ) {
+		define( 'CARELAX_RYGTJEK_ADS_CONVERSION', 'AW-623792239/yQ-oCIjJxccZEO-guakC' );
+	}
+
 	// 1) Vis skabelonen i rullemenuen for sider
 	add_filter( 'theme_page_templates', function ( $templates ) {
 		$templates[ CARELAX_RYGTJEK_TEMPLATE ] = 'Rygtjek landingpage (ny)';
@@ -217,19 +231,36 @@ RYGTJEK_JS_END;
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&family=Raleway:wght@400;600;700;800&display=swap" rel="stylesheet">
 <?php wp_head(); ?>
+<?php if ( CARELAX_RYGTJEK_GTM ) : ?>
+<!-- Google Tag Manager (samme container som resten af sitet) -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer',<?php echo wp_json_encode( CARELAX_RYGTJEK_GTM ); ?>);</script>
+<!-- End Google Tag Manager -->
+<?php endif; ?>
 <style id="carelax-rygtjek-css">
 <?php echo $css; // phpcs:ignore WordPress.Security.EscapeOutput ?>
 <?php echo $wp_css; // phpcs:ignore WordPress.Security.EscapeOutput ?>
 </style>
 </head>
 <body class="carelax-rygtjek">
+<?php if ( CARELAX_RYGTJEK_GTM ) : ?>
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=<?php echo esc_attr( CARELAX_RYGTJEK_GTM ); ?>" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<?php endif; ?>
 <?php
 		if ( function_exists( 'wp_body_open' ) ) {
 			wp_body_open();
 		}
 		echo $body; // phpcs:ignore WordPress.Security.EscapeOutput
 ?>
-<script>window.CARELAX_RYGTJEK = { endpoint: <?php echo wp_json_encode( esc_url_raw( rest_url( 'carelax/v1/rygtjek' ) ) ); ?> };</script>
+<script>window.CARELAX_RYGTJEK = <?php
+		echo wp_json_encode( array(
+			'endpoint' => esc_url_raw( rest_url( 'carelax/v1/rygtjek' ) ),
+			'tracking' => array(
+				'ga4'  => CARELAX_RYGTJEK_GA4,
+				'ads'  => CARELAX_RYGTJEK_ADS_CONVERSION,
+				'meta' => array( 'Lead', 'CompleteRegistration' ),
+			),
+		) );
+		?>;</script>
 <script id="carelax-rygtjek-js">
 <?php echo $js; // phpcs:ignore WordPress.Security.EscapeOutput ?>
 </script>
