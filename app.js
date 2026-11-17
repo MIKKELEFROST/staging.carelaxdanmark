@@ -1,9 +1,7 @@
 (function () {
-  // Varianter styres via URL, fx ?headline=problem&steps=1&sticky=0&stats=0&press=0
+  // Varianter styres via URL, fx ?sticky=0&stats=0&press=0
   var q = new URLSearchParams(location.search);
   var cfg = {
-    headline: q.get('headline') === 'problem' ? 'problem' : 'gevinst',
-    twoStep: q.get('steps') !== '1',
     sticky: q.get('sticky') !== '0',
     stats: q.get('stats') !== '0',
     press: q.get('press') !== '0'
@@ -17,8 +15,6 @@
     tags: 'seng',
     stars: '4,5'
   };
-  // Video med Simon: mp4-fil (fx assets/simon.mp4) eller et YouTube/Vimeo-link.
-  var VIDEO = { src: 'assets/simon.mp4', poster: 'assets/simon-poster.webp' };
 
   // Udvalgte seng- og rygrelaterede anmeldelser fra Trustpilot (vises indtil TrustBox er sat op)
   var REVIEWS = [
@@ -30,13 +26,18 @@
       text: 'Det er den bedste investering, jeg har gjort i mange år. Er kun ked af, jeg ikke har købt den madras tidligere.' }
   ];
 
-  var PAINS = ['Ondt i ryggen', 'Nakke & skuldre', 'Lænd', 'Søvnløshed', 'Gammel madras'];
-  var FAQS = [
-    ['Er rygtjekket virkelig gratis?', 'Ja. Rygtjekket er helt gratis og uforpligtende. Du betaler intet for besøget, scanningen eller rådgivningen.'],
-    ['Skal jeg købe noget bagefter?', 'Nej. Du får vores vurdering og konkrete råd til en bedre nattesøvn. Om du vil handle noget, er helt op til dig.'],
-    ['Hvor foregår rygtjekket?', 'Hjemme hos dig. Vi kommer ud, uanset hvor i landet du bor, så du sparer transporttiden og vi kan vurdere den madras, du sover på.'],
-    ['Hvad sker der, når jeg har booket?', 'Vi ringer dig op inden for 24 timer på hverdage og aftaler et tidspunkt, der passer dig.']
+  // "Kender du det?" – titlerne sendes med bookingen (skal matche listen i WordPress-kodestykket)
+  var SYMPTOMS = [
+    ['Stiv i lænden om morgenen', 'Det letter, når du har været oppe lidt'],
+    ['Ondt i nakke eller skuldre', 'Især når du vågner'],
+    ['Du sover arm eller skulder', 'Og vågner med prikken i fingrene'],
+    ['Du vender dig hele natten', 'Og har svært ved at finde ro'],
+    ['Madrassen er over 8-10 år gammel', 'Eller har en tydelig fordybning'],
+    ['Du vågner træt', 'Selvom du har sovet længe nok']
   ];
+  // Gener i trin 2 (skal matche listen i WordPress-kodestykket)
+  var PAINS = ['Ondt i ryggen', 'Nakke og skuldre', 'Lænd', 'Søvnløshed', 'Gammel madras'];
+
   // [titel, dato, artikel på sund-forskning.dk]
   var SF = 'https://sund-forskning.dk/artikler/';
   var MAGS = [
@@ -58,23 +59,84 @@
   var el = function (tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
   // Varianter
-  $$('[data-headline]').forEach(function (h) { h.hidden = h.dataset.headline !== cfg.headline; });
   if (!cfg.stats) $('[data-section="stats"]').remove();
   if (!cfg.press) $('[data-section="press"]').remove();
-  $$('[data-two-step]').forEach(function (n) { n.hidden = !cfg.twoStep; });
-  $$('[data-one-step]').forEach(function (n) { n.hidden = cfg.twoStep; });
-  $('#primaryLabel').textContent = cfg.twoStep ? 'Næste: Vælg dine gener' : 'Book gratis rygtjek';
 
-  // Specialistfoto (vises hvis assets/specialist.jpg findes)
-  var photo = new Image();
-  photo.onload = function () { var s = $('#photoSlot'); s.innerHTML = ''; s.appendChild(photo); };
-  photo.alt = 'Specialist scanner en ryg hjemme hos en kunde';
-  photo.src = 'assets/specialist.jpg';
-
-  // Formular
+  // På WordPress sætter kodestykket window.CARELAX_RYGTJEK.endpoint (mail til samme modtagere som den
+  // gamle rygtjek-formular). Uden endpoint (fx Vercel-demoen) virker formularen, men intet sendes.
   var form = $('#form');
-  var state = { step: 1, tried: false, pains: [] };
+  var endpoint = form.dataset.endpoint || (window.CARELAX_RYGTJEK && window.CARELAX_RYGTJEK.endpoint);
+  var loadedAt = Date.now();
+  function post(payload) {
+    if (!endpoint) return Promise.resolve();
+    payload.side = location.href;
+    payload.website = form.website ? form.website.value : ''; // spamfælde
+    payload.t = Date.now() - loadedAt;
+    return fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); });
+  }
+
+  // "Kender du det?" – valgte symptomer vises i formularen og sendes med bookingen
+  var symSel = [];
+  var symBtns = {};
+  SYMPTOMS.forEach(function (s) {
+    var b = el('button', 'sym');
+    b.type = 'button';
+    b.setAttribute('aria-pressed', 'false');
+    b.appendChild(el('span', 'box'));
+    var t = el('span');
+    t.appendChild(el('b', null, s[0]));
+    t.appendChild(el('span', null, s[1]));
+    b.appendChild(t);
+    b.addEventListener('click', function () { toggleSym(s[0]); });
+    symBtns[s[0]] = b;
+    $('#symptoms').appendChild(b);
+  });
+  function toggleSym(name) {
+    var i = symSel.indexOf(name);
+    if (i > -1) symSel.splice(i, 1); else symSel.push(name);
+    renderSym();
+  }
+  function renderSym() {
+    var n = symSel.length;
+    Object.keys(symBtns).forEach(function (k) { symBtns[k].setAttribute('aria-pressed', symSel.indexOf(k) > -1 ? 'true' : 'false'); });
+    $('#symText').textContent = n === 0
+      ? 'Kan du nikke genkendende til bare én af dem, er et rygtjek et godt sted at starte.'
+      : 'Du har sat ' + n + ' flueben. Dine svar sendes med, når du booker, så specialisten kan forberede sig.';
+    $('#symBtn').textContent = n === 0 ? 'Book gratis rygtjek' : 'Book med mine svar';
+    var list = $('#symList');
+    list.innerHTML = '';
+    symSel.forEach(function (name) {
+      var li = el('li');
+      li.appendChild(el('span', null, name));
+      var x = el('button', null, '×');
+      x.type = 'button';
+      x.setAttribute('aria-label', 'Fjern ' + name);
+      x.addEventListener('click', function () { toggleSym(name); });
+      li.appendChild(x);
+      list.appendChild(li);
+    });
+    $('#symBox').hidden = n === 0;
+  }
+
+  // Gener (trin 2)
+  var painSel = [];
+  PAINS.forEach(function (p) {
+    var c = el('button', 'chip', p);
+    c.type = 'button';
+    c.setAttribute('aria-pressed', 'false');
+    c.addEventListener('click', function () {
+      var on = c.getAttribute('aria-pressed') !== 'true';
+      c.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (on) painSel.push(p); else painSel.splice(painSel.indexOf(p), 1);
+    });
+    $('#pains').appendChild(c);
+  });
+
+  // Formular: bookingen sendes ved trin 1, trin 2 sender valgfrie ekstra oplysninger
   var fields = { navn: form.navn, tlf: form.tlf, post: form.post };
+  var tried = false;
+  var booking = null;
 
   function validity() {
     return {
@@ -84,86 +146,57 @@
     };
   }
   function isOk(v) { return v.navn && v.tlf && v.post; }
-
-  function renderPains() {
-    $$('.pains').forEach(function (wrap) {
-      wrap.innerHTML = '';
-      PAINS.forEach(function (t) {
-        var b = el('button', 'chip', t);
-        b.type = 'button';
-        b.setAttribute('aria-pressed', state.pains.indexOf(t) > -1 ? 'true' : 'false');
-        b.addEventListener('click', function () {
-          var i = state.pains.indexOf(t);
-          if (i > -1) state.pains.splice(i, 1); else state.pains.push(t);
-          renderPains();
-        });
-        wrap.appendChild(b);
-      });
-    });
-  }
-
-  function render() {
+  function paint() {
     var v = validity();
-    Object.keys(fields).forEach(function (k) { fields[k].classList.toggle('invalid', state.tried && !v[k]); });
-    $('#formErr').hidden = !(state.tried && !isOk(v));
-    var s2 = cfg.twoStep && state.step === 2;
-    $('#step1').hidden = s2;
-    $('#step2').hidden = !s2;
-    $('#stepNo').textContent = state.step;
-    $('#bar2').classList.toggle('on', state.step === 2);
+    Object.keys(fields).forEach(function (k) { fields[k].classList.toggle('invalid', tried && !v[k]); });
+    $('#formErr').hidden = !(tried && !isOk(v));
   }
+  Object.keys(fields).forEach(function (k) { fields[k].addEventListener('input', paint); });
 
-  Object.keys(fields).forEach(function (k) { fields[k].addEventListener('input', render); });
-
-  var loadedAt = Date.now();
-  function send() {
-    var data = {
-      navn: fields.navn.value.trim(), telefon: fields.tlf.value.trim(), postnummer: fields.post.value.trim(),
-      gener: state.pains.slice(), email: form.mail.value.trim(), bemaerkning: form.note.value.trim(),
-      variant: { headline: cfg.headline, steps: cfg.twoStep ? 2 : 1 },
-      side: location.href,
-      website: form.website ? form.website.value : '', // spamfælde
-      t: Date.now() - loadedAt
-    };
-    // På WordPress sætter kodestykket window.CARELAX_RYGTJEK.endpoint (mail til samme modtagere som
-    // den gamle rygtjek-formular). Uden endpoint (fx Vercel-demoen) vises tak-siden uden at sende.
-    var endpoint = form.dataset.endpoint || (window.CARELAX_RYGTJEK && window.CARELAX_RYGTJEK.endpoint);
-    var buttons = $$('button[type="submit"]', form);
-    var done = function () {
-      $('#firstName').textContent = data.navn.split(' ')[0];
-      $('#thanksTlf').textContent = data.telefon;
-      form.hidden = true;
-      $('#thanks').hidden = false;
-    };
-    $('#sendErr').hidden = true;
-    if (!endpoint) return done();
-    buttons.forEach(function (b) { b.disabled = true; });
-    fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
-      .then(function (r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        done();
-      })
-      .catch(function () { $('#sendErr').hidden = false; })
-      .then(function () { buttons.forEach(function (b) { b.disabled = false; }); });
+  function showStep(n) {
+    ['#step1', '#step2', '#step3'].forEach(function (id, i) { $(id).hidden = i !== n - 1; });
   }
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
-    if (!isOk(validity())) { state.tried = true; state.step = 1; render(); return; }
-    if (cfg.twoStep && state.step === 1) { state.step = 2; render(); return; }
-    send();
-  });
-  $('#back').addEventListener('click', function () { state.step = 1; render(); });
-  $('#reset').addEventListener('click', function () {
-    form.reset();
-    state = { step: 1, tried: false, pains: [] };
-    form.hidden = false;
-    $('#thanks').hidden = true;
     $('#sendErr').hidden = true;
-    renderPains(); render();
+    if (!isOk(validity())) { tried = true; paint(); return; }
+    booking = {
+      navn: fields.navn.value.trim(),
+      telefon: fields.tlf.value.trim(),
+      postnummer: fields.post.value.trim()
+    };
+    var btn = $('#submit1');
+    btn.disabled = true;
+    post({ type: 'booking', navn: booking.navn, telefon: booking.telefon, postnummer: booking.postnummer, symptomer: symSel.slice() })
+      .then(function () {
+        $('#firstName').textContent = booking.navn.split(' ')[0];
+        $('#thanksTlf').textContent = booking.telefon;
+        showStep(2);
+      }, function () { $('#sendErr').hidden = false; })
+      .then(function () { btn.disabled = false; });
   });
 
-  renderPains(); render();
+  $('#send2').addEventListener('click', function () {
+    var btn = this;
+    var extra = { gener: painSel.slice(), email: form.mail.value.trim(), bemaerkning: form.note.value.trim() };
+    $('#sendErr2').hidden = true;
+    // Intet udfyldt: spring direkte til tak
+    if (!extra.gener.length && !extra.email && !extra.bemaerkning) { showStep(3); return; }
+    btn.disabled = true;
+    post({ type: 'extra', navn: booking.navn, telefon: booking.telefon, postnummer: booking.postnummer,
+      gener: extra.gener, email: extra.email, bemaerkning: extra.bemaerkning })
+      .then(function () { showStep(3); }, function () { $('#sendErr2').hidden = false; })
+      .then(function () { btn.disabled = false; });
+  });
+
+  $('#reset').addEventListener('click', function () {
+    form.reset();
+    tried = false; booking = null; symSel = []; painSel = [];
+    $$('.chip').forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
+    $('#sendErr').hidden = true; $('#sendErr2').hidden = true;
+    renderSym(); paint(); showStep(1);
+  });
 
   // Glidende anmeldelser (dubleres så båndet kan køre i ring)
   (function () {
@@ -184,7 +217,7 @@
       return c;
     }
     var set = REVIEWS.concat(REVIEWS);
-    set.forEach(function (r, i) { track.appendChild(card(r, false)); });
+    set.forEach(function (r) { track.appendChild(card(r, false)); });
     set.forEach(function (r) { track.appendChild(card(r, true)); });
   })();
 
@@ -203,39 +236,21 @@
     document.head.appendChild(tps);
   }
 
-  // Video med Simon
-  if (VIDEO.src) {
-    var frame = $('#videoFrame');
-    var yt = VIDEO.src.match(/(?:youtu\.be\/|v=|shorts\/)([\w-]{11})/);
-    var vm = VIDEO.src.match(/vimeo\.com\/(\d+)/);
-    if (yt || vm) {
-      var ifr = document.createElement('iframe');
-      ifr.src = yt ? 'https://www.youtube-nocookie.com/embed/' + yt[1] + '?rel=0' : 'https://player.vimeo.com/video/' + vm[1];
-      ifr.allow = 'autoplay; fullscreen; picture-in-picture';
-      ifr.allowFullscreen = true;
-      ifr.title = 'Simon fortæller om rygtjekket';
-      frame.appendChild(ifr);
-    } else {
-      // Videoen har indbrændte undertekster, så den starter uden lyd og kører i ring
-      var v = document.createElement('video');
-      v.src = VIDEO.src; v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'metadata';
-      v.setAttribute('playsinline', ''); v.setAttribute('aria-label', 'Simon fortæller om rygtjekket');
-      if (VIDEO.poster) v.poster = VIDEO.poster;
-      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (reduce) v.controls = true; else v.autoplay = true;
-      frame.appendChild(v);
-      var snd = el('button', 'vid-sound', 'Slå lyd til');
-      snd.type = 'button';
-      snd.setAttribute('aria-pressed', 'false');
-      snd.addEventListener('click', function () {
-        v.muted = !v.muted;
-        if (!v.muted) { v.currentTime = 0; v.play(); }
-        snd.setAttribute('aria-pressed', !v.muted);
-        snd.textContent = v.muted ? 'Slå lyd til' : 'Slå lyd fra';
-      });
-      frame.appendChild(snd);
+  // Video med Simon: starter uden lyd (indbrændte undertekster), lyd kan slås til
+  var video = $('#simonVideo');
+  var soundBtn = $('#vidSound');
+  if (video && soundBtn) {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      video.removeAttribute('autoplay'); video.pause(); video.controls = true;
     }
-    $('#videoSection').hidden = false;
+    soundBtn.addEventListener('click', function () {
+      video.muted = !video.muted;
+      if (!video.muted) { video.currentTime = 0; video.play(); }
+      soundBtn.setAttribute('aria-pressed', video.muted ? 'false' : 'true');
+      $('.sound-on', soundBtn).style.display = video.muted ? 'none' : '';
+      $('.sound-off', soundBtn).style.display = video.muted ? '' : 'none';
+      $('span', soundBtn).textContent = video.muted ? 'Slå lyd til' : 'Slå lyd fra';
+    });
   }
 
   // Mobilmenu
@@ -266,13 +281,14 @@
   document.addEventListener('click', function (e) { if (!e.target.closest('.nav-item')) closeSubs(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSubs(); });
 
-  // Scroll til formular
+  // Scroll til formularen (og sæt fokus i navnefeltet)
   var card = $('#book');
   $$('[data-to-form]').forEach(function (a) {
     a.addEventListener('click', function (e) {
       e.preventDefault();
       var offset = window.innerWidth <= 900 ? 12 : 90;
       window.scrollTo({ top: card.getBoundingClientRect().top + window.scrollY - offset, behavior: 'smooth' });
+      setTimeout(function () { if (!$('#step1').hidden) try { fields.navn.focus({ preventScroll: true }); } catch (_) {} }, 500);
     });
   });
 
@@ -300,24 +316,5 @@
     });
   }
 
-  // FAQ
-  var openFaq = 0;
-  function renderFaq() {
-    var list = $('#faqList');
-    list.innerHTML = '';
-    FAQS.forEach(function (f, i) {
-      var open = openFaq === i;
-      var item = el('div', 'faq-item');
-      var btn = el('button', 'faq-q');
-      btn.type = 'button';
-      btn.setAttribute('aria-expanded', open);
-      btn.appendChild(document.createTextNode(f[0]));
-      btn.appendChild(el('span', 'faq-icon', open ? '–' : '+'));
-      btn.addEventListener('click', function () { openFaq = open ? -1 : i; renderFaq(); });
-      item.appendChild(btn);
-      if (open) item.appendChild(el('p', 'faq-a', f[1]));
-      list.appendChild(item);
-    });
-  }
-  renderFaq();
+  renderSym(); paint();
 })();

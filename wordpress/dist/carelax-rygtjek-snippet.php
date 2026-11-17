@@ -103,17 +103,20 @@ if ( ! defined( 'CARELAX_RYGTJEK_LOADED' ) ) {
 				return $ok;
 			}
 
+			// "booking" = trin 1 (navn, telefon, postnummer, tjekliste), "extra" = valgfrit trin 2.
+			$type  = ( isset( $p['type'] ) && 'extra' === $p['type'] ) ? 'extra' : 'booking';
 			$navn  = sanitize_text_field( isset( $p['navn'] ) ? (string) $p['navn'] : '' );
 			$tlf   = preg_replace( '/\D/', '', isset( $p['telefon'] ) ? (string) $p['telefon'] : '' );
 			$post  = preg_replace( '/\D/', '', isset( $p['postnummer'] ) ? (string) $p['postnummer'] : '' );
 			$email = sanitize_email( isset( $p['email'] ) ? (string) $p['email'] : '' );
 			$note  = sanitize_textarea_field( isset( $p['bemaerkning'] ) ? (string) $p['bemaerkning'] : '' );
 			$side  = esc_url_raw( isset( $p['side'] ) ? (string) $p['side'] : '' );
-			$gener = array_values( array_intersect(
-				array( 'Ondt i ryggen', 'Nakke & skuldre', 'Lænd', 'Søvnløshed', 'Gammel madras' ),
-				array_map( 'strval', isset( $p['gener'] ) ? (array) $p['gener'] : array() )
-			) );
-			$variant = isset( $p['variant'] ) && is_array( $p['variant'] ) ? $p['variant'] : array();
+			// Kun kendte valg accepteres (samme lister som i app.js).
+			$pick = function ( $key, $allowed ) use ( $p ) {
+				return array_values( array_intersect( $allowed, array_map( 'strval', isset( $p[ $key ] ) ? (array) $p[ $key ] : array() ) ) );
+			};
+			$symptomer = $pick( 'symptomer', array( 'Stiv i lænden om morgenen', 'Ondt i nakke eller skuldre', 'Du sover arm eller skulder', 'Du vender dig hele natten', 'Madrassen er over 8-10 år gammel', 'Du vågner træt' ) );
+			$gener     = $pick( 'gener', array( 'Ondt i ryggen', 'Nakke og skuldre', 'Lænd', 'Søvnløshed', 'Gammel madras' ) );
 
 			if ( mb_strlen( $navn ) < 2 || mb_strlen( $navn ) > 100 || 8 !== strlen( $tlf ) || 4 !== strlen( $post ) ) {
 				return new WP_REST_Response( array( 'ok' => false, 'error' => 'invalid' ), 400 );
@@ -122,6 +125,10 @@ if ( ! defined( 'CARELAX_RYGTJEK_LOADED' ) ) {
 				$email = '';
 			}
 			$note = mb_substr( $note, 0, 2000 );
+			// Ekstra oplysninger uden indhold: intet at sende.
+			if ( 'extra' === $type && ! $gener && ! $email && '' === $note ) {
+				return $ok;
+			}
 
 			// Højst 20 bookinger pr. IP-adresse pr. 10 minutter.
 			$key = 'carelax_rygtjek_' . md5( isset( $_SERVER['REMOTE_ADDR'] ) ? (string) $_SERVER['REMOTE_ADDR'] : '' );
@@ -131,25 +138,30 @@ if ( ! defined( 'CARELAX_RYGTJEK_LOADED' ) ) {
 			}
 			set_transient( $key, $n + 1, 10 * MINUTE_IN_SECONDS );
 
-			$variant_txt = 'overskrift: ' . ( isset( $variant['headline'] ) ? sanitize_key( $variant['headline'] ) : '-' )
-				. ', trin: ' . ( isset( $variant['steps'] ) ? (int) $variant['steps'] : '-' );
 			$body = 'Fra: ' . $navn . "\n"
-				. 'Email: ' . ( $email ? $email : '(ikke udfyldt)' ) . "\n"
+				. ( $email ? 'Email: ' . $email . "\n" : '' )
 				. 'Telefon: ' . implode( ' ', str_split( $tlf, 2 ) ) . "\n"
-				. 'Post-nr: ' . $post . "\n\n"
-				. 'Gener: ' . ( $gener ? implode( ', ', $gener ) : '(ingen valgt)' ) . "\n\n"
-				. "Evt. bemærkning:\n" . ( '' !== $note ? $note : '(ingen)' ) . "\n\n"
-				. "-- \n"
+				. 'Post-nr: ' . $post . "\n\n";
+			if ( 'booking' === $type ) {
+				$subject = 'Booking af gratis rygtjek';
+				$body   .= 'Kender du det? (tjekliste): ' . ( $symptomer ? implode( ', ', $symptomer ) : '(intet valgt)' ) . "\n\n"
+					. "Kunden kan tilføje gener, e-mail og en bemærkning bagefter. De kommer i så fald i en separat mail.\n\n";
+			} else {
+				$subject = 'Booking af gratis rygtjek – ekstra oplysninger';
+				$body   .= 'Gener: ' . ( $gener ? implode( ', ', $gener ) : '(ingen valgt)' ) . "\n\n"
+					. "Evt. bemærkning:\n" . ( '' !== $note ? $note : '(ingen)' ) . "\n\n"
+					. "Ekstra oplysninger til en booking, der allerede er sendt.\n\n";
+			}
+			$body .= "-- \n"
 				. 'Denne e-mail er afsendt fra rygtjek-landingssiden på ' . get_bloginfo( 'name' ) . "\n"
-				. 'Side: ' . ( $side ? $side : home_url( '/' ) ) . "\n"
-				. 'Variant: ' . $variant_txt;
+				. 'Side: ' . ( $side ? $side : home_url( '/' ) );
 
 			$s       = carelax_rygtjek_mail_settings();
 			$headers = array( 'From: ' . $s['sender'] );
 			if ( $email ) {
 				$headers[] = 'Reply-To: ' . $email;
 			}
-			if ( ! wp_mail( $s['to'], 'Booking af gratis rygtjek', $body, $headers ) ) {
+			if ( ! wp_mail( $s['to'], $subject, $body, $headers ) ) {
 				return new WP_REST_Response( array( 'ok' => false, 'error' => 'mail' ), 500 );
 			}
 			return $ok;
@@ -173,7 +185,7 @@ if ( ! defined( 'CARELAX_RYGTJEK_LOADED' ) ) {
 		$assets = carelax_rygtjek_assets_url();
 
 		$css = <<<'RYGTJEK_CSS_END'
-:root{--ink:#1f2a24;--muted:#5a645e;--line:#e7e2d9;--cream:#faf8f4;--sand:#f3efe8;--mint:#e9f5eb;--green:#33b048;--green-d:#2b9a3e}
+:root{--ink:#1f2a24;--muted:#5a645e;--line:#e7e2d9;--cream:#faf8f4;--sand:#f3efe8;--mint:#e9f5eb;--green:#33b048;--green-d:#2b9a3e;--green-dd:#23803a;--mint-b:#cbe7d0;--err:#c0392b}
 body{margin:0;background:#fff;font-family:'Open Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
 *{box-sizing:border-box}
 a{color:inherit;text-decoration:none}
@@ -225,74 +237,130 @@ input,textarea,button{font-family:inherit}
   .sub a:hover,.sub a:focus-visible{color:#33b048;background:var(--cream)}
 }
 
-/* Hero */
-.hero{position:relative;background:radial-gradient(ellipse at 12% 0%,#e3f2e5 0%,rgba(250,248,244,0) 55%),radial-gradient(ellipse at 100% 100%,#f1ebe1 0%,rgba(250,248,244,0) 50%),var(--cream);color:var(--ink);overflow:hidden}
-.hero .wrap{padding:72px 0 88px;display:grid;grid-template-columns:minmax(0,1fr) 470px;gap:72px;align-items:start}
-.hero-copy{padding-top:12px}
-.pill{display:inline-flex;align-items:center;gap:10px;border:1px solid #cbe7d0;background:#fff;color:#23803a;font-size:13px;font-weight:700;padding:7px 14px;border-radius:30px}
-.pill-dot{width:8px;height:8px;border-radius:50%;background:#33b048}
-.hero h1{margin:26px 0 0;font-family:Raleway,sans-serif;font-weight:800;font-size:60px;line-height:1.08;letter-spacing:-.5px;text-wrap:balance}
+/* Fælles (v2) */
 .green{color:#33b048}
-.hero-lead{margin-top:24px;font-size:18px;line-height:1.7;color:var(--muted);max-width:560px;text-wrap:pretty}
-.hero-checks{display:flex;flex-direction:column;gap:14px;margin-top:32px}
-.hero-check{display:flex;align-items:center;gap:14px;font-size:16px;font-weight:600}
-.hero-check-ico{flex:none;width:26px;height:26px;border-radius:50%;background:#33b048;display:flex;align-items:center;justify-content:center}
-.trust{display:flex;align-items:center;gap:28px;margin-top:44px;padding-top:28px;border-top:1px solid var(--line)}
-.trust-item{display:flex;flex-direction:column;gap:4px}
-.trust-tp{gap:6px}
-.tp-badge{display:flex;align-items:center;gap:8px;height:20px;font-size:13px;font-weight:700;color:var(--ink)}
-.tp-stars{display:flex;gap:2px}
-.tp-stars i{width:18px;height:18px;background:#00b67a;display:flex;align-items:center;justify-content:center}
-.tp-logo{display:flex;align-items:center;gap:3px;font-weight:700;font-size:13px}
-.trust-item b{font-size:14px}
-.trust-sub{font-size:12.5px;color:#6f7772}
-.trust-sep{width:1px;height:40px;background:var(--line)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--green);color:#fff;font-weight:800;font-size:16px;border:0;border-radius:8px;padding:15px 26px;cursor:pointer;text-decoration:none;box-shadow:0 8px 20px rgba(51,176,72,.3)}
+.btn:hover{background:var(--green-d);color:#fff}
+.btn:disabled{opacity:.7;cursor:wait}
+.btn:focus-visible,.input:focus-visible,.sym:focus-visible,.chip:focus-visible,.faq summary:focus-visible{outline:3px solid #9fd8aa;outline-offset:2px}
+.lead{margin-top:16px;font-size:17px;line-height:1.7;color:var(--muted);max-width:62ch}
+.lead a{color:var(--ink)}
+.sec{padding:100px 0;background:#fff}
+.sec.alt{background:var(--sand)}
+.sec-intro{max-width:760px}
+.stars{display:inline-flex;gap:2px}
+.stars i{width:16px;height:16px;background:#00b67a;display:flex;align-items:center;justify-content:center}
+.stars i::after{content:"";width:10px;height:10px;background:#fff;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)}
 
-/* Form card */
-.card{background:#fff;color:var(--ink);border-radius:14px;border:1px solid var(--line);box-shadow:0 30px 70px rgba(31,42,36,.14);overflow:hidden}
-.card-body{padding:30px 32px 28px}
-.card-head{display:flex;justify-content:space-between;align-items:baseline}
-.card-head h2{margin:0;font-family:Raleway,sans-serif;font-weight:800;font-size:25px}
-.step-no{font-size:12.5px;font-weight:700;color:#777}
-.bars{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:14px}
-.bar{height:4px;border-radius:2px;background:#e6e6e6}
-.bar.on{background:#33b048}
-.card-intro{margin-top:12px;font-size:13.5px;color:#666}
-.fields{display:flex;flex-direction:column;gap:14px;margin-top:22px}
-.fields.step2{gap:16px}
-.field{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:700}
+/* Hero (v2) */
+.hero{background:radial-gradient(ellipse at 12% 0%,#e3f2e5 0%,rgba(250,248,244,0) 55%),radial-gradient(ellipse at 100% 100%,#f1ebe1 0%,rgba(250,248,244,0) 50%),var(--cream);color:var(--ink)}
+.hero .wrap{padding-top:64px;padding-bottom:80px;display:grid;grid-template-columns:minmax(0,1fr) 460px;gap:64px;align-items:start}
+.pill{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--mint-b);background:#fff;color:var(--green-dd);font-size:13px;font-weight:700;padding:7px 14px;border-radius:30px}
+.pill-dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.hero h1{margin:22px 0 0;font-family:Raleway,sans-serif;font-weight:800;font-size:56px;line-height:1.08;letter-spacing:-.5px;text-wrap:balance}
+.hero-lead{margin-top:20px;font-size:18px;line-height:1.7;color:var(--muted);max-width:580px;text-wrap:pretty}
+.facts{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+.fact{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-weight:700;font-size:15px}
+.fact svg{color:var(--green);flex:none}
+.honest{margin-top:22px;display:flex;gap:12px;align-items:flex-start;color:var(--muted);font-size:15px;line-height:1.6;max-width:560px}
+.honest svg{flex:none;color:var(--green);margin-top:3px}
+.trust{margin-top:32px;padding-top:24px;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.trust-item{display:flex;flex-direction:column;gap:2px}
+.trust-item b{font-size:14.5px;line-height:1.4}
+.trust-item span{font-size:13px;color:#6f7772}
+.trust-item .stars{margin-bottom:6px}
+.trust-item .stars i{width:15px;height:15px}
+.trust-item .stars i::after{width:9px;height:9px}
+a.trust-item:hover b{color:var(--green-d)}
+
+/* Formular (v2): trin 1 sender bookingen, trin 2 er valgfrit */
+.card{background:#fff;color:var(--ink);border-radius:16px;border:1px solid var(--line);box-shadow:0 30px 70px rgba(31,42,36,.14);overflow:hidden}
+.card-body{padding:28px 30px 24px}
+.card h2{margin:0;font-family:Raleway,sans-serif;font-weight:800;font-size:25px;line-height:1.2}
+.card-intro{margin-top:8px;font-size:14.5px;color:var(--muted)}
+.fields{display:flex;flex-direction:column;gap:14px;margin-top:20px}
+.field{display:flex;flex-direction:column;gap:6px;font-size:13.5px;font-weight:700}
 .opt{font-weight:400;color:#888}
-.field .opt{margin-top:-6px}
 .row2{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px}
-.input{width:100%;min-width:0;height:50px;border:1.5px solid #dcdcdc;border-radius:8px;padding:0 14px;font-size:15px;outline:none;font-weight:400;color:#222;background:#fff}
-textarea.input{height:76px;padding:12px 14px;resize:none}
-.input:focus{border-color:#33b048}
-.input.invalid{border-color:#e57373}
-.input.invalid:focus{border-color:#33b048}
-.pains-wrap{display:flex;flex-direction:column;gap:8px}
-.pains-label{font-size:13px;font-weight:700}
-.pains{display:flex;flex-wrap:wrap;gap:8px}
-.chip{border:1.5px solid #dcdcdc;background:#fff;color:#222;font-size:13.5px;font-weight:600;padding:8px 14px;border-radius:30px;cursor:pointer}
-.chip[aria-pressed="true"]{border-color:#33b048;background:#e7f5e9}
-.form-err{font-size:13px;color:#c62828;font-weight:600}
-.send-err{margin-top:12px}
-.send-err a{text-decoration:underline;white-space:nowrap}
+.input{width:100%;min-width:0;height:50px;border:1.5px solid #d9d4ca;border-radius:9px;padding:0 14px;font-size:16px;outline:none;font-weight:400;color:var(--ink);background:#fff}
+textarea.input{height:72px;padding:12px 14px;resize:none}
+.input:focus{border-color:var(--green)}
+.input.invalid{border-color:var(--err)}
+.hint{font-size:12.5px;color:var(--muted);margin-top:-6px;line-height:1.4}
+.symbox{margin-top:16px;background:var(--mint);border:1px solid var(--mint-b);border-radius:10px;padding:12px 14px}
+.symbox p{font-size:13.5px;font-weight:700;color:var(--green-dd)}
+.symbox ul{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.symbox li{display:flex;align-items:center;gap:2px;background:#fff;border:1px solid var(--mint-b);border-radius:999px;padding:3px 4px 3px 12px;font-size:13px;font-weight:600}
+.symbox li button{border:0;background:none;cursor:pointer;color:var(--muted);font-size:17px;line-height:1;width:24px;height:24px;border-radius:50%}
+.symbox li button:hover{background:var(--sand)}
+.form-err{margin-top:12px;font-size:13.5px;color:var(--err);font-weight:600}
+.form-err a{text-decoration:underline;white-space:nowrap}
 .hp{position:absolute!important;left:-9999px;width:1px;height:1px;overflow:hidden}
-.btn-primary{height:58px;border:0;border-radius:8px;background:#33b048;color:#fff;font-size:17px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 8px 20px rgba(51,176,72,.35)}
-.btn-primary:hover{background:#2b9a3e}
-.btn-primary:disabled{opacity:.7;cursor:wait}
-.btn-row{display:grid;grid-template-columns:auto 1fr;gap:10px}
-.btn-back{height:58px;padding:0 20px;border:1.5px solid #dcdcdc;background:#fff;border-radius:8px;font-weight:700;font-size:15px;cursor:pointer;color:#222}
-.assure{display:flex;justify-content:center;gap:18px;margin-top:18px;font-size:12.5px;color:#555;font-weight:600}
-.assure span{display:flex;align-items:center;gap:6px}
-.card-foot{background:var(--sand);border-top:1px solid #ececec;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;font-size:13.5px}
-.card-foot span{color:#555}
-.card-foot a{font-weight:800;font-size:16px;color:#222}
-.thanks{padding:56px 36px;text-align:center}
-.thanks-ico{width:72px;height:72px;margin:0 auto;border-radius:50%;background:#33b048;display:flex;align-items:center;justify-content:center}
-.thanks h2{margin:24px 0 0;font-family:Raleway,sans-serif;font-weight:800;font-size:28px}
-.thanks p{margin-top:12px;font-size:15px;color:#555}
-.link-btn{margin-top:26px;border:0;background:none;color:#33b048;font-weight:700;font-size:14px;cursor:pointer}
+.btn-primary{width:100%;height:56px;margin-top:18px;font-size:17px}
+.assure{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 16px;margin-top:14px;font-size:12.5px;color:#555;font-weight:600}
+.assure span{display:flex;align-items:center;gap:5px}
+.assure svg{color:var(--green)}
+.privacy{margin-top:12px;font-size:12px;color:var(--muted);text-align:center;line-height:1.45}
+.privacy a{text-decoration:underline}
+.done-ico{width:52px;height:52px;border-radius:50%;background:var(--mint);color:var(--green);display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.extra-q{margin-top:20px;font-weight:700;font-size:15px}
+.pains{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{border:1.5px solid #d9d4ca;background:#fff;color:var(--ink);font-size:13.5px;font-weight:600;padding:8px 14px;border-radius:30px;cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--green);background:var(--mint);color:var(--green-dd)}
+.link-btn{margin-top:14px;border:0;background:none;color:var(--green-d);font-weight:700;font-size:14px;cursor:pointer;padding:0}
+.card-foot{background:var(--sand);border-top:1px solid #ece7de;padding:14px 30px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;color:var(--muted)}
+.card-foot a{font-weight:800;font-size:16px;color:var(--ink)}
+
+/* Sådan foregår det + Simon (v2) */
+.split{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:64px;align-items:start;margin-top:44px}
+.person{background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden;position:sticky;top:88px;box-shadow:0 20px 50px rgba(31,42,36,.08)}
+.vid{position:relative;background:var(--ink);display:flex;justify-content:center}
+.vid video{display:block;width:100%;max-width:380px;aspect-ratio:9/16;object-fit:cover;background:var(--ink)}
+.vid-sound{position:absolute;left:16px;bottom:16px;display:flex;align-items:center;gap:8px;border:0;border-radius:30px;padding:9px 14px 9px 12px;background:rgba(255,255,255,.92);color:var(--ink);font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.2)}
+.vid-sound:hover{background:#fff}
+.person-in{padding:24px 26px 26px}
+.person h3{margin:0;font-family:Raleway,sans-serif;font-weight:800;font-size:24px}
+.role{color:var(--green-dd);font-weight:700;font-size:14px;margin-top:4px}
+.person-txt{margin-top:10px;color:var(--muted);font-size:15px}
+.person blockquote{margin:16px 0 0;padding-left:16px;border-left:3px solid var(--green);color:var(--ink);font-style:italic;font-size:15.5px;line-height:1.65}
+.btn-block{width:100%;margin-top:20px}
+.steps{list-style:none;margin:0;padding:0}
+.step{display:grid;grid-template-columns:52px minmax(0,1fr);gap:20px;padding-bottom:34px;position:relative}
+.step:last-child{padding-bottom:0}
+.step:not(:last-child)::before{content:"";position:absolute;left:25px;top:56px;bottom:6px;border-left:2px dashed #cfe6d3}
+.num{width:52px;height:52px;border-radius:50%;border:2px solid var(--green);color:var(--green);display:flex;align-items:center;justify-content:center;font-family:Raleway,sans-serif;font-weight:800;font-size:20px;background:#fff}
+.step h3{margin:10px 0 0;font-family:Raleway,sans-serif;font-weight:800;font-size:21px;line-height:1.25}
+.time{display:inline-block;margin-top:8px;font-size:12.5px;font-weight:700;color:var(--green-dd);background:var(--mint);border-radius:999px;padding:3px 11px}
+.step p{margin-top:8px;color:var(--muted);font-size:15.5px;line-height:1.7}
+
+/* Kender du det? (v2) */
+.symptoms{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:36px}
+.sym{display:flex;gap:14px;align-items:flex-start;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:18px 20px;cursor:pointer;text-align:left;font:inherit;color:var(--ink);transition:border-color .15s,background .15s}
+.sym:hover{border-color:#cfe6d3}
+.sym .box{width:24px;height:24px;border:2px solid #cfc9bd;border-radius:6px;flex:none;display:flex;align-items:center;justify-content:center;margin-top:1px;background:#fff}
+.sym[aria-pressed="true"]{border-color:var(--green);background:var(--mint)}
+.sym[aria-pressed="true"] .box{background:var(--green);border-color:var(--green)}
+.sym[aria-pressed="true"] .box::after{content:"";width:6px;height:11px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.sym b{display:block;font-size:16px;line-height:1.35}
+.sym span span{display:block;margin-top:3px;font-size:14px;color:var(--muted)}
+.sym-result{margin-top:28px;display:flex;flex-wrap:wrap;align-items:center;gap:16px 28px}
+.sym-result p{font-weight:700;max-width:56ch}
+
+/* Skal jeg købe noget? (v2) */
+.straight{background:var(--mint);border:1px solid var(--mint-b);border-radius:20px;padding:48px 52px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:48px;align-items:center}
+.straight h2{margin:10px 0 0;font-family:Raleway,sans-serif;font-weight:800;font-size:38px;line-height:1.15}
+.straight p{font-size:17px;color:#3f4a44;line-height:1.7}
+.straight p+p{margin-top:14px}
+
+/* FAQ (v2) */
+.faq-wrap{display:grid;grid-template-columns:380px minmax(0,1fr);gap:72px}
+.faq{border-top:1px solid #e0dacf}
+.faq details{border-bottom:1px solid #e0dacf}
+.faq summary{list-style:none;cursor:pointer;padding:22px 48px 22px 0;font-weight:700;font-size:18px;position:relative}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";position:absolute;right:0;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:50%;background:#fff;color:var(--green);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:400}
+.faq details[open] summary::after{content:"–"}
+.faq details p{color:var(--muted);padding:0 48px 22px 0;font-size:15.5px;line-height:1.75}
 
 /* Stats */
 .stats{background:#33b048;color:#fff}
@@ -300,35 +368,6 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
 .stat-n{font-family:Raleway,sans-serif;font-weight:800;font-size:52px;line-height:1}
 .stat-l{margin-top:8px;font-size:14px;font-weight:600}
 .stats p{font-size:16px;line-height:1.7;border-left:2px solid rgba(255,255,255,.4);padding-left:32px;text-wrap:pretty}
-
-/* Steps */
-.steps{background:#fff;padding:110px 0 100px}
-.sec-head{display:flex;justify-content:space-between;align-items:end;gap:40px}
-.btn-dark{flex:none;background:var(--green);color:#fff;font-weight:700;font-size:15px;padding:15px 26px;border-radius:6px}
-.btn-dark:hover{background:var(--green-d);color:#fff}
-.steps-grid{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:28px;margin-top:64px}
-.steps-line{position:absolute;left:30px;right:30px;top:30px;height:2px;background:repeating-linear-gradient(90deg,#cfe9d4 0 8px,transparent 8px 14px)}
-.step{position:relative}
-.step-n{width:60px;height:60px;border-radius:50%;background:#fff;border:2px solid #33b048;display:flex;align-items:center;justify-content:center;font-family:Raleway,sans-serif;font-weight:800;font-size:22px;color:#33b048}
-.step h3{margin:26px 0 10px;font-family:Raleway,sans-serif;font-weight:800;font-size:21px}
-.step p{font-size:15px;color:#555;line-height:1.7}
-
-/* Benefits */
-.benefits{background:var(--sand);padding:100px 0}
-.benefits .wrap{display:grid;grid-template-columns:520px minmax(0,1fr);gap:80px;align-items:center}
-.photo{height:600px;position:relative}
-.photo-slot{position:absolute;inset:0;border-radius:16px;overflow:hidden;background:#e8e3d9;color:#8a8f84;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:12px;font-size:13px}
-.photo-slot::after{content:"";position:absolute;inset:0;border:1.5px dashed currentColor;opacity:.35;border-radius:16px;pointer-events:none}
-.photo-slot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.photo-badge{position:absolute;right:-36px;bottom:40px;background:#fff;border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.15);padding:18px 22px;display:flex;align-items:center;gap:14px;pointer-events:none}
-.photo-badge-ico{width:44px;height:44px;border-radius:50%;background:#e7f5e9;display:flex;align-items:center;justify-content:center}
-.photo-badge b{display:block;font-size:15px}
-.photo-badge span{font-size:13px;color:#666}
-.ben-list{display:flex;flex-direction:column;gap:22px;margin-top:36px}
-.ben{display:grid;grid-template-columns:44px 1fr;gap:18px}
-.ben-ico{width:44px;height:44px;border-radius:10px;background:#fff;border:1px solid #e1e4dc;display:flex;align-items:center;justify-content:center}
-.ben b{display:block;font-size:17px}
-.ben p{margin-top:4px;font-size:15px;color:#555}
 
 /* Reviews */
 .reviews{background:#fff;padding:100px 0 90px}
@@ -349,17 +388,6 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
 .mag-t{margin-top:14px;font-size:14.5px;font-weight:700;line-height:1.4}
 .mag-d{margin-top:6px;font-size:12.5px;color:#7a827d}
 
-/* FAQ */
-.faq{background:#fff;padding:100px 0}
-.faq .wrap{display:grid;grid-template-columns:380px minmax(0,1fr);gap:80px}
-.faq-intro{margin-top:18px;color:#555}
-.faq-intro a{font-weight:700;color:#222}
-.faq-list{border-top:1px solid #e5e5e5}
-.faq-item{border-bottom:1px solid #e5e5e5}
-.faq-q{width:100%;display:flex;justify-content:space-between;align-items:center;gap:20px;background:none;border:0;padding:26px 0;text-align:left;font-size:19px;font-weight:700;color:#222;cursor:pointer}
-.faq-icon{flex:none;width:32px;height:32px;border-radius:50%;background:var(--mint);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:400;color:#33b048}
-.faq-a{padding:0 60px 26px 0;font-size:15.5px;color:#555;line-height:1.75}
-
 /* Final CTA */
 .final{background:radial-gradient(ellipse at 85% 100%,#d6eedb 0%,rgba(233,245,235,0) 60%),var(--mint);color:var(--ink);padding:90px 0}
 .final .wrap{display:flex;justify-content:space-between;align-items:center;gap:40px}
@@ -370,7 +398,6 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
 .btn-big{background:#33b048;color:#fff;font-weight:800;font-size:17px;padding:19px 34px;border-radius:8px;box-shadow:0 8px 20px rgba(51,176,72,.35)}
 .btn-big:hover{background:#2b9a3e;color:#fff}
 
-
 /* ===== Responsivt: desktop (≥1240px) er uændret ===== */
 .m-actions{display:none}
 
@@ -380,12 +407,10 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
   .wrap{padding-left:24px;padding-right:24px}
   .nav{gap:16px;font-size:13px}
   .nav-tel{padding-left:16px}
-  .hero .wrap{gap:48px;grid-template-columns:minmax(0,1fr) 440px;padding-left:24px;padding-right:24px}
+  .hero .wrap{grid-template-columns:minmax(0,1fr) 420px;gap:44px}
+  .hero h1{font-size:48px}
   .stats .wrap{padding-left:24px;padding-right:24px;gap:48px}
-  .benefits .wrap{grid-template-columns:minmax(0,440px) minmax(0,1fr);gap:64px}
-  .photo-badge{right:-20px}
-  .input{width:100%;min-width:0}
-  .row2{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}
+  .split{gap:44px}
 }
 
 /* Header: mobilmenu (hamburger) under 1120px, så menuen med dropdowns aldrig bliver for trang */
@@ -413,7 +438,6 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
   .nav-item.open>.sub-toggle svg{transform:rotate(180deg)}
   .nav-item.open>.sub{display:flex;flex-direction:column;flex-basis:100%;padding:0 0 10px 14px}
   .nav .sub a{padding:10px 0;border-bottom:0;font-size:15px;font-weight:400;color:var(--muted)}
-
 }
 
 /* Tablet og mobil */
@@ -421,6 +445,7 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
   body{font-size:15px}
   .h2{font-size:32px;line-height:1.2}
   .eyebrow{font-size:12px}
+  .lead{font-size:16px}
 
   /* Fast bjælke bliver en bund-bjælke med de to vigtigste handlinger */
   .sticky{top:auto;bottom:0;border-bottom:0;border-top:1px solid var(--line);box-shadow:0 -6px 24px rgba(31,42,36,.1);padding-bottom:env(safe-area-inset-bottom)}
@@ -430,28 +455,22 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
   .sticky-tel{flex:none;display:flex;align-items:center;justify-content:center;height:48px;padding:0 16px;border:1px solid var(--line);border-radius:6px}
   .sticky-cta{flex:1;text-align:center;height:48px;display:flex;align-items:center;justify-content:center;font-size:15px;border-radius:6px}
 
-  /* Hero: overskrift → tekst → formular → fordele → tillid */
-  .hero .wrap{display:flex;flex-direction:column;padding:32px 24px 48px;gap:0}
+  /* Hero: overskrift → tekst → fakta → formular → ærlighed → tillid */
+  .hero .wrap{display:flex;flex-direction:column;gap:0;padding-top:32px;padding-bottom:48px}
   .hero-copy{display:contents}
   .pill{order:1;align-self:flex-start;font-size:12px;padding:6px 12px}
-  .hero h1{order:2;margin-top:18px;font-size:40px;line-height:1.1;letter-spacing:-.3px}
+  .hero h1{order:2;margin-top:18px;font-size:38px;line-height:1.1;letter-spacing:-.3px}
   .hero-lead{order:3;margin-top:16px;font-size:16px;line-height:1.65}
-  .card{order:4;margin-top:28px;width:100%;max-width:560px;align-self:center}
-  .hero-checks{order:5;margin-top:32px;gap:12px}
-  .hero-check{font-size:15px;align-items:flex-start}
-  .trust{order:6;margin-top:32px;padding-top:24px;flex-wrap:wrap;gap:18px 24px}
-  .trust-sep{display:none}
-  .trust-item{flex:1 1 40%}
-  .trust-tp{flex-basis:100%}
+  .facts{order:4;margin-top:20px}
+  .card{order:5;margin-top:26px;width:100%;max-width:560px;align-self:center}
+  .honest{order:6;margin-top:28px}
+  .trust{order:7;grid-template-columns:1fr 1fr;margin-top:24px}
+  .trust-item:first-child{grid-column:1/-1}
 
   /* Formular */
   .card-body{padding:24px 20px 22px}
-  .card-head h2{font-size:22px}
-  .input{font-size:16px;width:100%;min-width:0}
-  .row2{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}
-  .assure{flex-wrap:wrap;gap:8px 16px}
+  .card h2{font-size:22px}
   .card-foot{padding:14px 20px;flex-wrap:wrap;gap:4px 12px}
-  .thanks{padding:44px 24px}
 
   /* Tal */
   .stats .wrap{grid-template-columns:1fr 1fr;gap:28px 24px;padding:36px 24px}
@@ -459,33 +478,23 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
   .stats p{grid-column:1/-1;border-left:0;border-top:2px solid rgba(255,255,255,.4);padding-left:0;padding-top:20px;font-size:15px}
 
   /* Sektioner generelt */
-  .steps{padding:64px 0}
-  .benefits,.reviews,.faq{padding:64px 0}
+  .sec,.reviews{padding:64px 0}
   .press{padding:64px 0 72px}
   .final{padding:56px 0}
   .sec-head{flex-direction:column;align-items:flex-start;gap:20px}
 
-  /* Fire trin: lodret tidslinje */
-  .steps-grid{grid-template-columns:1fr;gap:0;margin-top:36px}
-  .steps-line{display:none}
-  .step{display:grid;grid-template-columns:60px 1fr;column-gap:18px;padding-bottom:28px}
-  .step:not(:last-child)::before{content:"";position:absolute;left:29px;top:60px;bottom:0;width:2px;background:repeating-linear-gradient(180deg,#cfe9d4 0 8px,transparent 8px 14px)}
-  .step:last-child{padding-bottom:0}
-  .step-n{grid-row:1/3;width:60px;height:60px;font-size:20px;position:relative;z-index:1}
-  .step h3{margin:14px 0 6px;font-size:19px}
+  /* Sådan foregår det */
+  .split{grid-template-columns:minmax(0,1fr);margin-top:32px}
+  .person{position:static;max-width:520px;width:100%;justify-self:center}
+  .step h3{font-size:19px}
   .step p{font-size:15px}
 
-  /* Det får du */
-  .benefits .wrap{display:flex;flex-direction:column;gap:40px}
-  .benefits .wrap>div:last-child{order:-1}
-  .photo{width:100%;height:340px}
-  .photo-badge{right:12px;bottom:12px;padding:12px 16px}
-  .ben-list{margin-top:28px;gap:18px}
-  .ben{grid-template-columns:40px 1fr;gap:14px}
-  .ben-ico{width:40px;height:40px}
-  .ben b{font-size:16px}
+  /* Kender du det? + Skal jeg købe noget? */
+  .symptoms{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .straight{grid-template-columns:minmax(0,1fr);gap:20px;padding:32px 28px}
+  .straight h2{font-size:30px}
 
-  /* Anmeldelser: widget kan swipes vandret */
+  /* Anmeldelser */
   .reviews .h2{margin:10px 0 28px;line-height:1.2}
 
   /* Sund Forskning */
@@ -496,63 +505,49 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
   .mag-t{font-size:14px}
 
   /* FAQ */
-  .faq .wrap{grid-template-columns:1fr;gap:28px}
-  .faq-q{font-size:17px;padding:20px 0;align-items:flex-start}
-  .faq-a{padding:0 0 20px;font-size:15px}
+  .faq-wrap{grid-template-columns:minmax(0,1fr);gap:24px}
+  .faq summary{font-size:17px;padding:20px 44px 20px 0}
+  .faq details p{padding-right:0;font-size:15px}
 
-  /* Afslutning + footer */
+  /* Afslutning */
   .final .wrap{flex-direction:column;align-items:stretch;text-align:center;gap:28px}
   .final h2{font-size:32px}
   .final p{font-size:16px}
   .final-r{flex-direction:column-reverse;align-items:stretch;gap:16px}
   .btn-big{display:block;text-align:center}
-
 }
 
 /* Mobil */
 @media (max-width:560px){
   .wrap{padding-left:16px;padding-right:16px}
   .nav{padding-left:16px;padding-right:16px}
-  .hero .wrap{padding:24px 16px 40px}
-  .hero h1{font-size:33px}
+  .hero .wrap{padding-top:24px;padding-bottom:40px}
+  .hero h1{font-size:32px}
   .h2{font-size:28px}
+  .fact{font-size:14px;padding:8px 12px}
   .card{margin-top:24px}
   .card-body{padding:22px 16px 20px}
-  .card-head h2{font-size:20px}
-  .step-no{white-space:nowrap;font-size:12px}
+  .card h2{font-size:21px}
   .card-foot{padding:14px 16px}
   .row2{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
-  .btn-primary{font-size:16px;height:56px}
-  .btn-row .btn-back{padding:0 16px}
+  .btn-primary{font-size:16px}
+  .trust{grid-template-columns:minmax(0,1fr);gap:12px}
   .stat-n{font-size:34px}
   .stats .wrap{gap:24px 16px;padding-left:16px;padding-right:16px}
-  .photo{height:280px}
+  .person-in{padding:20px}
+  .symptoms{grid-template-columns:minmax(0,1fr)}
+  .sym{padding:16px}
+  .sym-result .btn{width:100%}
+  .straight{padding:26px 20px}
+  .straight h2{font-size:26px}
   .press-track{margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px;scroll-padding-left:16px}
   .final h2{font-size:28px}
   .sticky .wrap{padding-left:12px;padding-right:12px}
 }
 
-/* Trustpilot live + video (lyst tema) */
+/* Trustpilot live-widget */
 .tp-live{width:100%;min-height:240px}
-.video{background:#fff;padding:0 0 100px}
-.video .wrap{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:80px;align-items:center}
-.video-copy{max-width:560px}
-.video-quote{margin:22px 0 0;padding-left:18px;border-left:3px solid var(--green);font-style:italic;font-size:17px;line-height:1.7;color:var(--ink)}
-.video-quote cite{display:block;margin-top:10px;font-style:normal;font-weight:700;font-size:13.5px;color:var(--muted)}
-.video-lead{margin-top:18px;font-size:16px;color:var(--muted);line-height:1.7}
-.video .btn-dark{display:inline-block;margin-top:28px}
-.video-frame{position:relative;aspect-ratio:9/16;width:100%;max-width:360px;border-radius:18px;overflow:hidden;background:var(--ink);box-shadow:0 30px 70px rgba(31,42,36,.18)}
-.vid-sound{position:absolute;left:14px;bottom:14px;border:0;border-radius:30px;padding:9px 16px;background:rgba(255,255,255,.92);color:var(--ink);font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.2)}
-.vid-sound::before{content:'🔈 '}
-.vid-sound[aria-pressed="true"]::before{content:'🔊 '}
-.video-frame video,.video-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0;object-fit:cover}
-@media (max-width:1239px){.video .wrap{gap:48px}}
-@media (max-width:900px){
-  .video{padding:0 0 64px}
-  .video .wrap{grid-template-columns:1fr;gap:28px}
-  .video-frame{justify-self:center;max-width:340px}
-  .tp-live{min-height:300px}
-}
+@media (max-width:900px){.tp-live{min-height:300px}}
 
 /* Footer – samme som carelaxdanmark.dk */
 .usp-bar{background:#222;height:54px}
@@ -601,25 +596,6 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
 @media (max-width:560px){
   .usp-bar .wrap{grid-template-columns:repeat(2,auto);justify-content:start}
   .footer-grid{grid-template-columns:1fr}
-}
-
-/* Så simpelt er det (under formularen) */
-.hero-side{min-width:0}
-.simple{margin-top:20px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 26px 22px;box-shadow:0 14px 36px rgba(31,42,36,.07)}
-.simple h3{margin:0;font-family:Raleway,sans-serif;font-weight:800;font-size:21px}
-.simple ol{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:1fr;gap:8px}
-.simple li{display:flex;align-items:baseline;gap:8px;font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.2px;line-height:1.35}
-.simple li b{color:var(--green);flex:none}
-.zzz{color:var(--green);font-weight:800;letter-spacing:0}
-.zzz sup{font-size:.75em}
-@media (max-width:900px){
-  .hero-side{display:contents}
-  .simple{order:5;margin-top:20px;width:100%;max-width:560px;align-self:center}
-  .hero-checks{order:6}
-  .trust{order:7}
-}
-@media (max-width:560px){
-  .simple{padding:18px 18px 20px}
 }
 
 /* Glidende Trustpilot-anmeldelser */
@@ -687,93 +663,66 @@ RYGTJEK_CSS_END;
   <div class="wrap">
     <div class="hero-copy">
       <div class="pill"><span class="pill-dot"></span>Gratis · Uforpligtende · Vi kommer til dig</div>
-      <h1 data-headline="gevinst">Sov bedre. Få et <span class="green">gratis rygtjek</span> hjemme hos dig.</h1>
-      <h1 data-headline="problem" hidden>Vågner du med <span class="green">ondt i ryggen?</span> Vi finder årsagen – gratis.</h1>
-      <p class="hero-lead">En af vores specialister i ergonomi og søvn kommer ud til dig, scanner din ryg og vurderer din madras. Du får konkrete råd til en bedre nattesøvn – uden at skulle købe noget.</p>
-      <div class="hero-checks">
-        <div class="hero-check"><span class="hero-check-ico"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>Specialist i ergonomi og søvn kommer hjem til dig</div>
-        <div class="hero-check"><span class="hero-check-ico"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>Liggende scanning af ryggen og vurdering af din madras</div>
-        <div class="hero-check"><span class="hero-check-ico"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>Konkrete råd – helt uden købsforpligtelse</div>
+      <h1>Vågner du med ondt i ryggen? Få et <span class="green">gratis rygtjek</span> hjemme hos dig.</h1>
+      <p class="hero-lead">En fysioterapeut eller specialist i søvn kommer hjem til dig, laver en 3D-scanning af din ryg, vurderer din madras og giver dig konkrete råd til en bedre nattesøvn. Du skal ikke købe noget.</p>
+      <div class="facts">
+        <span class="fact"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Ca. 45 min</span>
+        <span class="fact"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Hjemme hos dig, hele landet</span>
+        <span class="fact"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg>0 kr.</span>
       </div>
+      <p class="honest"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/></svg><span>Vi er ærlige: Er din madras fin, siger vi det. Er den ikke, viser vi gerne, hvad der kan hjælpe. Du bestemmer selv.</span></p>
       <div class="trust">
-        <a href="https://dk.trustpilot.com/review/carelaxdanmark.dk" target="_blank" rel="noopener" class="trust-item trust-tp">
-          <span class="tp-badge" aria-label="Fremragende – 5 stjerner på Trustpilot">Fremragende <span class="tp-stars"><i><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21.2l1.6-7L2 9.5l7.1-.6z"/></svg></i><i><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21.2l1.6-7L2 9.5l7.1-.6z"/></svg></i><i><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21.2l1.6-7L2 9.5l7.1-.6z"/></svg></i><i><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21.2l1.6-7L2 9.5l7.1-.6z"/></svg></i><i><svg width="12" height="12" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21.2l1.6-7L2 9.5l7.1-.6z"/></svg></i></span><span class="tp-logo"><svg width="14" height="14" viewBox="0 0 24 24" fill="#00b67a"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21.2l1.6-7L2 9.5l7.1-.6z"/></svg>Trustpilot</span></span>
-          <span class="trust-sub">TrustScore 4,9 · 551 anmeldelser</span></a>
-        <span class="trust-sep"></span>
-        <div class="trust-item"><b>Børsen Gazelle</b><span class="trust-sub">Flere år i træk</span></div>
-        <span class="trust-sep"></span>
-        <div class="trust-item"><b>Kendt fra Sund Forskning</b><span class="trust-sub">11 artikler siden 2024</span></div>
+        <a href="https://dk.trustpilot.com/review/carelaxdanmark.dk" target="_blank" rel="noopener" class="trust-item"><span class="stars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><b>4,9 på Trustpilot</b><span>551 anmeldelser</span></a>
+        <a href="https://borsen.dk/gazelle/" target="_blank" rel="noopener" class="trust-item"><b>Børsen Gazelle 4 år i træk</b><span>2022, 2023, 2024 og 2025</span></a>
+        <div class="trust-item"><b>Kendt fra Sund Forskning</b><span>11 artikler siden 2024</span></div>
       </div>
     </div>
 
-    <div class="hero-side">
     <div id="book" class="card">
       <form id="form" novalidate>
-        <div class="card-body">
-          <div class="card-head">
-            <h2>Book dit gratis rygtjek</h2>
-            <span class="step-no" data-two-step>Trin <span id="stepNo">1</span> af 2</span>
-          </div>
-          <div class="bars" data-two-step><span class="bar on"></span><span class="bar" id="bar2"></span></div>
-          <p class="card-intro">Vi ringer dig op inden for 24 timer på hverdage og aftaler et tidspunkt, der passer dig.</p>
-
-          <div class="fields" id="step1">
+        <div class="card-body" id="step1">
+          <h2>Book dit gratis rygtjek</h2>
+          <p class="card-intro">Udfyld 3 felter. Vi ringer dig op inden for 24 timer på hverdage og finder et tidspunkt, der passer dig.</p>
+          <div class="fields">
             <label class="field">Navn<input class="input" name="navn" autocomplete="name" placeholder="Fornavn og efternavn"></label>
             <div class="row2">
-              <label class="field">Telefon<input class="input" name="tlf" type="tel" autocomplete="tel" inputmode="tel" placeholder="12 34 56 78"></label>
-              <label class="field">Postnummer<input class="input" name="post" autocomplete="postal-code" inputmode="numeric" placeholder="2600"></label>
+              <label class="field">Telefon<input class="input" name="tlf" type="tel" autocomplete="tel-national" inputmode="tel" placeholder="12 34 56 78"></label>
+              <label class="field">Postnummer<input class="input" name="post" autocomplete="postal-code" inputmode="numeric" maxlength="4" placeholder="2600"></label>
             </div>
-            <div class="pains-wrap" data-one-step hidden>
-              <span class="pains-label">Hvad generer dig mest? <span class="opt">(valgfrit)</span></span>
-              <div class="pains"></div>
-            </div>
-            <p class="form-err" id="formErr" hidden>Udfyld navn, telefon (8 cifre) og postnummer (4 cifre).</p>
+            <p class="hint">Postnummeret bruger vi til at finde en specialist tæt på dig.</p>
             <!-- Spamfælde: skjult felt, som kun robotter udfylder -->
             <label class="hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
-            <button type="submit" class="btn-primary" id="primary"><span id="primaryLabel">Næste: Vælg dine gener</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
           </div>
-
-          <div class="fields step2" id="step2" hidden>
-            <div class="pains-wrap">
-              <span class="pains-label">Hvad generer dig mest? <span class="opt">(vælg gerne flere)</span></span>
-              <div class="pains"></div>
-            </div>
-            <label class="field">E-mail <span class="opt">(valgfrit – til bekræftelse)</span><input class="input" name="mail" type="email" autocomplete="email" placeholder="navn@mail.dk"></label>
-            <label class="field">Bemærkning <span class="opt">(valgfrit)</span><textarea class="input" name="note" placeholder="Fx hvornår du bedst kan kontaktes"></textarea></label>
-            <div class="btn-row">
-              <button type="button" class="btn-back" id="back">Tilbage</button>
-              <button type="submit" class="btn-primary">Send booking</button>
-            </div>
-          </div>
-          <p class="form-err send-err" id="sendErr" role="alert" hidden>Din booking blev ikke sendt. Prøv igen, eller ring på <a href="tel:+4578155703">78 15 57 03</a>.</p>
-
-          <div class="assure">
-            <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#33b048" stroke-width="3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Koster 0 kr.</span>
-            <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#33b048" stroke-width="3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Ingen købsforpligtelse</span>
-            <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#33b048" stroke-width="3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Hele landet</span>
-          </div>
+          <div class="symbox" id="symBox" hidden><p>Dine svar sendes med, så specialisten kan forberede sig</p><ul id="symList"></ul></div>
+          <p class="form-err" id="formErr" hidden>Tjek venligst navn, telefon (8 cifre) og postnummer (4 cifre).</p>
+          <p class="form-err" id="sendErr" role="alert" hidden>Din booking blev ikke sendt. Prøv igen, eller ring på <a href="tel:+4578155703">78 15 57 03</a>.</p>
+          <button type="submit" class="btn btn-primary" id="submit1">Book gratis rygtjek <span aria-hidden="true">→</span></button>
+          <div class="assure"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Koster 0 kr.</span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Ingen købsforpligtelse</span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Hele landet</span></div>
+          <p class="privacy">Vi bruger kun dine oplysninger til at kontakte dig om rygtjekket. <a href="https://carelaxdanmark.dk/privatlivspolitik/" target="_blank" rel="noopener">Privatlivspolitik</a></p>
         </div>
-        <div class="card-foot">
-          <span>Hellere tale med os nu?</span>
-          <a href="tel:+4578155703">Ring 78 15 57 03</a>
+
+        <div class="card-body" id="step2" hidden>
+          <div class="done-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg></div>
+          <h2>Tak, <span id="firstName"></span>. Din booking er modtaget.</h2>
+          <p class="card-intro">Vi ringer på <b id="thanksTlf"></b> inden for 24 timer på hverdage.</p>
+          <p class="extra-q">Vil du hjælpe specialisten med at forberede sig? <span class="opt">(valgfrit)</span></p>
+          <div class="pains" id="pains"></div>
+          <div class="fields">
+            <label class="field"><span>E-mail <span class="opt">(valgfrit)</span></span><input class="input" name="mail" type="email" autocomplete="email" placeholder="navn@mail.dk"></label>
+            <label class="field"><span>Bemærkning <span class="opt">(fx hvornår vi bedst kan ringe)</span></span><textarea class="input" name="note" rows="2"></textarea></label>
+          </div>
+          <p class="form-err" id="sendErr2" role="alert" hidden>Dine ekstra oplysninger blev ikke sendt. Prøv igen. Din booking er modtaget.</p>
+          <button type="button" class="btn btn-primary" id="send2">Send ekstra oplysninger</button>
+        </div>
+
+        <div class="card-body" id="step3" hidden>
+          <div class="done-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg></div>
+          <h2>Perfekt. Vi glæder os til at hjælpe dig.</h2>
+          <p class="card-intro">Du hører fra os inden for 24 timer på hverdage.</p>
+          <button type="button" class="link-btn" id="reset">Lav en ny booking</button>
         </div>
       </form>
-      <div class="thanks" id="thanks" hidden>
-        <div class="thanks-ico"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
-        <h2>Tak, <span id="firstName"></span>!</h2>
-        <p>Din booking er modtaget. Vi ringer til dig på <b id="thanksTlf"></b> inden for 24 timer på hverdage for at aftale tid.</p>
-        <button type="button" class="link-btn" id="reset">Lav en ny booking</button>
-      </div>
-    </div>
-    <div class="simple">
-      <h3>Så <span class="green">simpelt</span> er det</h3>
-      <ol>
-        <li><b>1.</b>Bestil ergonomisk konsultation</li>
-        <li><b>2.</b>Lad madrassen vælge dig</li>
-        <li><b>3.</b>Modtag den perfekte madras</li>
-        <li><b>4.</b>Sov helt perfekt <span class="zzz" aria-hidden="true">z<sup>z</sup><sup>z</sup></span></li>
-      </ol>
-    </div>
+      <div class="card-foot"><span>Hellere tale med os nu?</span><a href="tel:+4578155703">Ring 78 15 57 03</a></div>
     </div>
   </div>
 </section>
@@ -786,56 +735,62 @@ RYGTJEK_CSS_END;
   </div>
 </section>
 
-<section class="steps">
+<section class="sec process">
   <div class="wrap">
-    <div class="sec-head">
-      <div><div class="eyebrow">SÅDAN FOREGÅR DET</div><h2 class="h2" style="max-width:640px">Fire trin fra ondt i ryggen til en bedre nattesøvn</h2></div>
-      <a href="#book" class="btn-dark" data-to-form>Book gratis rygtjek</a>
+    <div class="sec-intro">
+      <div class="eyebrow">SÅDAN FOREGÅR DET</div>
+      <h2 class="h2">Fra booking til bedre søvn</h2>
+      <p class="lead">Her er præcis, hvad der sker, så du ved, hvad du siger ja til.</p>
     </div>
-    <div class="steps-grid">
-      <div class="steps-line"></div>
-      <div class="step"><div class="step-n">1</div><h3>Vi kommer på besøg</h3><p>Carelax Danmark kommer til dig, uanset hvor i landet, og taler om dine behov.</p></div>
-      <div class="step"><div class="step-n">2</div><h3>Scanning af ryggen</h3><p>Vi foretager en liggende scanning af ryggen og vurderer den madras, du sover på.</p></div>
-      <div class="step"><div class="step-n">3</div><h3>Dybdegående samtale</h3><p>Vi gennemgår resultatet og taler om, hvordan du bedst forbedrer din søvn.</p></div>
-      <div class="step"><div class="step-n">4</div><h3>Sov allerede bedre</h3><p>Med vores analyse og gode råd kan du allerede fra første nat begynde at sove bedre.</p></div>
+    <div class="split">
+      <aside class="person">
+        <div class="vid">
+          <video id="simonVideo" src="{{RYGTJEK_ASSETS}}rygtjek-simon.mp4" poster="{{RYGTJEK_ASSETS}}rygtjek-simon-poster.webp" autoplay muted loop playsinline preload="metadata" aria-label="Fysioterapeut Simon fortæller om rygtjekket"></video>
+          <button type="button" class="vid-sound" id="vidSound" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4z"/><path class="sound-on" d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" style="display:none"/><path class="sound-off" d="m22 9-6 6M16 9l6 6"/></svg><span>Slå lyd til</span></button>
+        </div>
+        <div class="person-in">
+          <h3>Mød Simon</h3>
+          <div class="role">Fysioterapeut hos Carelax Danmark</div>
+          <p class="person-txt">Simon laver fysioterapeutiske rygtjek, så madrassen bliver tilpasset dig og ikke bare er en standard.</p>
+          <blockquote>"Næsten alle siger, at deres ryg er fin. Men du kan ikke mærke, hvordan din ryg ligger, mens du sover. Det kan vi se på en 3D-scanning. Og er din ryg fin, har du fået det bekræftet gratis."</blockquote>
+          <a href="#book" class="btn btn-block" data-to-form>Book din gratis 3D-scanning</a>
+        </div>
+      </aside>
+      <ol class="steps">
+        <li class="step"><div class="num">1</div><div><h3>Vi ringer dig op</h3><span class="time">Inden for 24 timer på hverdage</span><p>Vi aftaler et tidspunkt, der passer dig, og hører kort om dine gener.</p></div></li>
+        <li class="step"><div class="num">2</div><div><h3>Specialisten kommer hjem til dig</h3><span class="time">Uanset hvor i landet du bor</span><p>Du sparer transporttiden. Vi taler om, hvordan du sover, og hvor du mærker generne.</p></div></li>
+        <li class="step"><div class="num">3</div><div><h3>3D-scanning af ryggen</h3><span class="time">Med tøj på, liggende og stående</span><p>Vi scanner din ryg, mens du står op, og igen mens du ligger på din egen madras. Så kan vi sammenligne de to. Ryggen skal helst have samme form døgnet rundt, også når du sover. Du har tøjet på, og det gør ikke ondt.</p></div></li>
+        <li class="step"><div class="num">4</div><div><h3>Resultat og konkrete råd</h3><span class="time">Du bestemmer selv, hvad du vil bruge dem til</span><p>Vi gennemgår resultatet sammen og giver dig råd, du kan bruge med det samme, fx om sovestilling, pude eller madras.</p></div></li>
+      </ol>
     </div>
   </div>
 </section>
 
-<section class="video" id="videoSection" hidden>
+<section class="sec alt">
   <div class="wrap">
-    <div class="video-copy">
-      <div class="eyebrow">MØD SIMON – FYSIOTERAPEUT</div>
-      <h2 class="h2">Hør hvad der sker til et rygtjek</h2>
-      <p class="video-lead">Simon laver fysioterapeutiske rygtjek, så madrassen bliver tilpasset dig og ikke bare er en standard.</p>
-      <blockquote class="video-quote">"Næsten alle siger, at deres ryg er fin. Men du kan ikke mærke, hvordan din ryg ligger, mens du sover. Det kan vi se på en 3D-scanning. Og er din ryg fin, har du fået det bekræftet gratis."<cite>Simon, fysioterapeut hos Carelax Danmark</cite></blockquote>
-      <a href="#book" class="btn-dark" data-to-form>Book gratis rygtjek</a>
+    <div class="sec-intro">
+      <div class="eyebrow">KENDER DU DET?</div>
+      <h2 class="h2">Sæt flueben ved det, der passer på dig</h2>
+      <p class="lead">Den forkerte madras eller sovestilling kan give gener i nakke, ryg og lænd. Ofte starter løsningen med madrassen.</p>
     </div>
-    <div class="video-frame" id="videoFrame"></div>
+    <div class="symptoms" id="symptoms"></div>
+    <div class="sym-result">
+      <p id="symText">Kan du nikke genkendende til bare én af dem, er et rygtjek et godt sted at starte.</p>
+      <a href="#book" class="btn" id="symBtn" data-to-form>Book gratis rygtjek</a>
+    </div>
   </div>
 </section>
 
-<section class="benefits">
+<section class="sec">
   <div class="wrap">
-    <div class="photo">
-      <!-- Læg et foto i {{RYGTJEK_ASSETS}}rygtjek-specialist.jpg, så vises det automatisk her -->
-      <div class="photo-slot" id="photoSlot">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg>
-        <span>Foto: specialist der scanner en ryg hjemme hos en kunde</span>
+    <div class="straight">
+      <div>
+        <div class="eyebrow">SKAL JEG KØBE NOGET?</div>
+        <h2>Nej. Men vi siger det gerne ligeud.</h2>
       </div>
-      <div class="photo-badge">
-        <div class="photo-badge-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#33b048" stroke-width="2.4"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
-        <div><b>Vi kommer til dig</b><span>Uanset hvor i landet du bor</span></div>
-      </div>
-    </div>
-    <div>
-      <div class="eyebrow">DET FÅR DU – HELT GRATIS</div>
-      <h2 class="h2">Et personligt rygtjek med konkrete råd</h2>
-      <div class="ben-list">
-        <div class="ben"><span class="ben-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#33b048" stroke-width="3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><div><b>Besøg af en specialist</b><p>En af vores førende specialister i ergonomi og søvn kommer ud til dig – du sparer transporttiden.</p></div></div>
-        <div class="ben"><span class="ben-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#33b048" stroke-width="3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><div><b>Grundig analyse af din ryg</b><p>Vi undersøger årsagerne til eventuelle smerter i nakke, ryg og lænd.</p></div></div>
-        <div class="ben"><span class="ben-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#33b048" stroke-width="3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><div><b>Vurdering af din madras</b><p>Vi ser på, om din nuværende madras og sovestilling understøtter din krop.</p></div></div>
-        <div class="ben"><span class="ben-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#33b048" stroke-width="3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><div><b>Konkrete råd til bedre søvn</b><p>En dybdegående samtale om, hvordan du bliver fri for smerter og søvnløshed.</p></div></div>
+      <div>
+        <p>Carelax sælger senge og madrasser. Det er derfor, vi kan tilbyde rygtjekket gratis.</p>
+        <p>Er din madras fin, siger vi det, og så får du bare gode råd med. Er den ikke, viser vi dig gerne, hvad der kan hjælpe. Beslutningen er din, og et nej er helt i orden.</p>
       </div>
     </div>
   </div>
@@ -866,10 +821,21 @@ RYGTJEK_CSS_END;
   </div>
 </section>
 
-<section class="faq">
-  <div class="wrap">
-    <div><div class="eyebrow">SPØRGSMÅL &amp; SVAR</div><h2 class="h2">Det spørger folk typisk om</h2><p class="faq-intro">Fandt du ikke svaret? Ring på <a href="tel:+4578155703">78 15 57 03</a>.</p></div>
-    <div class="faq-list" id="faqList"></div>
+<section class="sec alt">
+  <div class="wrap faq-wrap">
+    <div class="sec-intro">
+      <div class="eyebrow">SPØRGSMÅL &amp; SVAR</div>
+      <h2 class="h2">Det spørger folk typisk om</h2>
+      <p class="lead">Fandt du ikke svaret? Ring på <a href="tel:+4578155703"><b>78 15 57 03</b></a>.</p>
+    </div>
+    <div class="faq">
+      <details open><summary>Er rygtjekket virkelig gratis?</summary><p>Ja. Rygtjekket er helt gratis og uforpligtende. Du betaler intet for besøget, scanningen eller rådgivningen.</p></details>
+      <details><summary>Skal jeg købe noget bagefter?</summary><p>Nej. Vi sælger senge og madrasser, og hvis din madras ikke støtter dig godt nok, viser vi gerne, hvad der kan hjælpe. Men du bestemmer selv, og et nej er helt i orden.</p></details>
+      <details><summary>Hvor lang tid tager det?</summary><p>Besøget tager typisk omkring 45 minutter, inklusive 3D-scanning og samtale.</p></details>
+      <details><summary>Hvad er en 3D-scanning af ryggen?</summary><p>Vi scanner din ryg to gange: én gang mens du står op, og én gang mens du ligger i din egen seng. Du har almindeligt tøj på. Ved at sammenligne de to scanninger kan vi se, om din madras lader ryggen beholde sin naturlige form om natten. Ryggen skal helst ligne sig selv døgnet rundt.</p></details>
+      <details><summary>Hvor foregår rygtjekket?</summary><p>Hjemme hos dig, uanset hvor i landet du bor. Så kan vi også se på den madras, du sover på til daglig.</p></details>
+      <details><summary>Hvad sker der, når jeg har booket?</summary><p>Vi ringer dig op inden for 24 timer på hverdage og aftaler et tidspunkt, der passer dig.</p></details>
+    </div>
   </div>
 </section>
 
@@ -918,11 +884,9 @@ RYGTJEK_BODY_END;
 
 		$js = <<<'RYGTJEK_JS_END'
 (function () {
-  // Varianter styres via URL, fx ?headline=problem&steps=1&sticky=0&stats=0&press=0
+  // Varianter styres via URL, fx ?sticky=0&stats=0&press=0
   var q = new URLSearchParams(location.search);
   var cfg = {
-    headline: q.get('headline') === 'problem' ? 'problem' : 'gevinst',
-    twoStep: q.get('steps') !== '1',
     sticky: q.get('sticky') !== '0',
     stats: q.get('stats') !== '0',
     press: q.get('press') !== '0'
@@ -936,8 +900,6 @@ RYGTJEK_BODY_END;
     tags: 'seng',
     stars: '4,5'
   };
-  // Video med Simon: mp4-fil (fx {{RYGTJEK_ASSETS}}rygtjek-simon.mp4) eller et YouTube/Vimeo-link.
-  var VIDEO = { src: '{{RYGTJEK_ASSETS}}rygtjek-simon.mp4', poster: '{{RYGTJEK_ASSETS}}rygtjek-simon-poster.webp' };
 
   // Udvalgte seng- og rygrelaterede anmeldelser fra Trustpilot (vises indtil TrustBox er sat op)
   var REVIEWS = [
@@ -949,13 +911,18 @@ RYGTJEK_BODY_END;
       text: 'Det er den bedste investering, jeg har gjort i mange år. Er kun ked af, jeg ikke har købt den madras tidligere.' }
   ];
 
-  var PAINS = ['Ondt i ryggen', 'Nakke & skuldre', 'Lænd', 'Søvnløshed', 'Gammel madras'];
-  var FAQS = [
-    ['Er rygtjekket virkelig gratis?', 'Ja. Rygtjekket er helt gratis og uforpligtende. Du betaler intet for besøget, scanningen eller rådgivningen.'],
-    ['Skal jeg købe noget bagefter?', 'Nej. Du får vores vurdering og konkrete råd til en bedre nattesøvn. Om du vil handle noget, er helt op til dig.'],
-    ['Hvor foregår rygtjekket?', 'Hjemme hos dig. Vi kommer ud, uanset hvor i landet du bor, så du sparer transporttiden og vi kan vurdere den madras, du sover på.'],
-    ['Hvad sker der, når jeg har booket?', 'Vi ringer dig op inden for 24 timer på hverdage og aftaler et tidspunkt, der passer dig.']
+  // "Kender du det?" – titlerne sendes med bookingen (skal matche listen i WordPress-kodestykket)
+  var SYMPTOMS = [
+    ['Stiv i lænden om morgenen', 'Det letter, når du har været oppe lidt'],
+    ['Ondt i nakke eller skuldre', 'Især når du vågner'],
+    ['Du sover arm eller skulder', 'Og vågner med prikken i fingrene'],
+    ['Du vender dig hele natten', 'Og har svært ved at finde ro'],
+    ['Madrassen er over 8-10 år gammel', 'Eller har en tydelig fordybning'],
+    ['Du vågner træt', 'Selvom du har sovet længe nok']
   ];
+  // Gener i trin 2 (skal matche listen i WordPress-kodestykket)
+  var PAINS = ['Ondt i ryggen', 'Nakke og skuldre', 'Lænd', 'Søvnløshed', 'Gammel madras'];
+
   // [titel, dato, artikel på sund-forskning.dk]
   var SF = 'https://sund-forskning.dk/artikler/';
   var MAGS = [
@@ -977,23 +944,84 @@ RYGTJEK_BODY_END;
   var el = function (tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
   // Varianter
-  $$('[data-headline]').forEach(function (h) { h.hidden = h.dataset.headline !== cfg.headline; });
   if (!cfg.stats) $('[data-section="stats"]').remove();
   if (!cfg.press) $('[data-section="press"]').remove();
-  $$('[data-two-step]').forEach(function (n) { n.hidden = !cfg.twoStep; });
-  $$('[data-one-step]').forEach(function (n) { n.hidden = cfg.twoStep; });
-  $('#primaryLabel').textContent = cfg.twoStep ? 'Næste: Vælg dine gener' : 'Book gratis rygtjek';
 
-  // Specialistfoto (vises hvis {{RYGTJEK_ASSETS}}rygtjek-specialist.jpg findes)
-  var photo = new Image();
-  photo.onload = function () { var s = $('#photoSlot'); s.innerHTML = ''; s.appendChild(photo); };
-  photo.alt = 'Specialist scanner en ryg hjemme hos en kunde';
-  photo.src = '{{RYGTJEK_ASSETS}}rygtjek-specialist.jpg';
-
-  // Formular
+  // På WordPress sætter kodestykket window.CARELAX_RYGTJEK.endpoint (mail til samme modtagere som den
+  // gamle rygtjek-formular). Uden endpoint (fx Vercel-demoen) virker formularen, men intet sendes.
   var form = $('#form');
-  var state = { step: 1, tried: false, pains: [] };
+  var endpoint = form.dataset.endpoint || (window.CARELAX_RYGTJEK && window.CARELAX_RYGTJEK.endpoint);
+  var loadedAt = Date.now();
+  function post(payload) {
+    if (!endpoint) return Promise.resolve();
+    payload.side = location.href;
+    payload.website = form.website ? form.website.value : ''; // spamfælde
+    payload.t = Date.now() - loadedAt;
+    return fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); });
+  }
+
+  // "Kender du det?" – valgte symptomer vises i formularen og sendes med bookingen
+  var symSel = [];
+  var symBtns = {};
+  SYMPTOMS.forEach(function (s) {
+    var b = el('button', 'sym');
+    b.type = 'button';
+    b.setAttribute('aria-pressed', 'false');
+    b.appendChild(el('span', 'box'));
+    var t = el('span');
+    t.appendChild(el('b', null, s[0]));
+    t.appendChild(el('span', null, s[1]));
+    b.appendChild(t);
+    b.addEventListener('click', function () { toggleSym(s[0]); });
+    symBtns[s[0]] = b;
+    $('#symptoms').appendChild(b);
+  });
+  function toggleSym(name) {
+    var i = symSel.indexOf(name);
+    if (i > -1) symSel.splice(i, 1); else symSel.push(name);
+    renderSym();
+  }
+  function renderSym() {
+    var n = symSel.length;
+    Object.keys(symBtns).forEach(function (k) { symBtns[k].setAttribute('aria-pressed', symSel.indexOf(k) > -1 ? 'true' : 'false'); });
+    $('#symText').textContent = n === 0
+      ? 'Kan du nikke genkendende til bare én af dem, er et rygtjek et godt sted at starte.'
+      : 'Du har sat ' + n + ' flueben. Dine svar sendes med, når du booker, så specialisten kan forberede sig.';
+    $('#symBtn').textContent = n === 0 ? 'Book gratis rygtjek' : 'Book med mine svar';
+    var list = $('#symList');
+    list.innerHTML = '';
+    symSel.forEach(function (name) {
+      var li = el('li');
+      li.appendChild(el('span', null, name));
+      var x = el('button', null, '×');
+      x.type = 'button';
+      x.setAttribute('aria-label', 'Fjern ' + name);
+      x.addEventListener('click', function () { toggleSym(name); });
+      li.appendChild(x);
+      list.appendChild(li);
+    });
+    $('#symBox').hidden = n === 0;
+  }
+
+  // Gener (trin 2)
+  var painSel = [];
+  PAINS.forEach(function (p) {
+    var c = el('button', 'chip', p);
+    c.type = 'button';
+    c.setAttribute('aria-pressed', 'false');
+    c.addEventListener('click', function () {
+      var on = c.getAttribute('aria-pressed') !== 'true';
+      c.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (on) painSel.push(p); else painSel.splice(painSel.indexOf(p), 1);
+    });
+    $('#pains').appendChild(c);
+  });
+
+  // Formular: bookingen sendes ved trin 1, trin 2 sender valgfrie ekstra oplysninger
   var fields = { navn: form.navn, tlf: form.tlf, post: form.post };
+  var tried = false;
+  var booking = null;
 
   function validity() {
     return {
@@ -1003,86 +1031,57 @@ RYGTJEK_BODY_END;
     };
   }
   function isOk(v) { return v.navn && v.tlf && v.post; }
-
-  function renderPains() {
-    $$('.pains').forEach(function (wrap) {
-      wrap.innerHTML = '';
-      PAINS.forEach(function (t) {
-        var b = el('button', 'chip', t);
-        b.type = 'button';
-        b.setAttribute('aria-pressed', state.pains.indexOf(t) > -1 ? 'true' : 'false');
-        b.addEventListener('click', function () {
-          var i = state.pains.indexOf(t);
-          if (i > -1) state.pains.splice(i, 1); else state.pains.push(t);
-          renderPains();
-        });
-        wrap.appendChild(b);
-      });
-    });
-  }
-
-  function render() {
+  function paint() {
     var v = validity();
-    Object.keys(fields).forEach(function (k) { fields[k].classList.toggle('invalid', state.tried && !v[k]); });
-    $('#formErr').hidden = !(state.tried && !isOk(v));
-    var s2 = cfg.twoStep && state.step === 2;
-    $('#step1').hidden = s2;
-    $('#step2').hidden = !s2;
-    $('#stepNo').textContent = state.step;
-    $('#bar2').classList.toggle('on', state.step === 2);
+    Object.keys(fields).forEach(function (k) { fields[k].classList.toggle('invalid', tried && !v[k]); });
+    $('#formErr').hidden = !(tried && !isOk(v));
   }
+  Object.keys(fields).forEach(function (k) { fields[k].addEventListener('input', paint); });
 
-  Object.keys(fields).forEach(function (k) { fields[k].addEventListener('input', render); });
-
-  var loadedAt = Date.now();
-  function send() {
-    var data = {
-      navn: fields.navn.value.trim(), telefon: fields.tlf.value.trim(), postnummer: fields.post.value.trim(),
-      gener: state.pains.slice(), email: form.mail.value.trim(), bemaerkning: form.note.value.trim(),
-      variant: { headline: cfg.headline, steps: cfg.twoStep ? 2 : 1 },
-      side: location.href,
-      website: form.website ? form.website.value : '', // spamfælde
-      t: Date.now() - loadedAt
-    };
-    // På WordPress sætter kodestykket window.CARELAX_RYGTJEK.endpoint (mail til samme modtagere som
-    // den gamle rygtjek-formular). Uden endpoint (fx Vercel-demoen) vises tak-siden uden at sende.
-    var endpoint = form.dataset.endpoint || (window.CARELAX_RYGTJEK && window.CARELAX_RYGTJEK.endpoint);
-    var buttons = $$('button[type="submit"]', form);
-    var done = function () {
-      $('#firstName').textContent = data.navn.split(' ')[0];
-      $('#thanksTlf').textContent = data.telefon;
-      form.hidden = true;
-      $('#thanks').hidden = false;
-    };
-    $('#sendErr').hidden = true;
-    if (!endpoint) return done();
-    buttons.forEach(function (b) { b.disabled = true; });
-    fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
-      .then(function (r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        done();
-      })
-      .catch(function () { $('#sendErr').hidden = false; })
-      .then(function () { buttons.forEach(function (b) { b.disabled = false; }); });
+  function showStep(n) {
+    ['#step1', '#step2', '#step3'].forEach(function (id, i) { $(id).hidden = i !== n - 1; });
   }
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
-    if (!isOk(validity())) { state.tried = true; state.step = 1; render(); return; }
-    if (cfg.twoStep && state.step === 1) { state.step = 2; render(); return; }
-    send();
-  });
-  $('#back').addEventListener('click', function () { state.step = 1; render(); });
-  $('#reset').addEventListener('click', function () {
-    form.reset();
-    state = { step: 1, tried: false, pains: [] };
-    form.hidden = false;
-    $('#thanks').hidden = true;
     $('#sendErr').hidden = true;
-    renderPains(); render();
+    if (!isOk(validity())) { tried = true; paint(); return; }
+    booking = {
+      navn: fields.navn.value.trim(),
+      telefon: fields.tlf.value.trim(),
+      postnummer: fields.post.value.trim()
+    };
+    var btn = $('#submit1');
+    btn.disabled = true;
+    post({ type: 'booking', navn: booking.navn, telefon: booking.telefon, postnummer: booking.postnummer, symptomer: symSel.slice() })
+      .then(function () {
+        $('#firstName').textContent = booking.navn.split(' ')[0];
+        $('#thanksTlf').textContent = booking.telefon;
+        showStep(2);
+      }, function () { $('#sendErr').hidden = false; })
+      .then(function () { btn.disabled = false; });
   });
 
-  renderPains(); render();
+  $('#send2').addEventListener('click', function () {
+    var btn = this;
+    var extra = { gener: painSel.slice(), email: form.mail.value.trim(), bemaerkning: form.note.value.trim() };
+    $('#sendErr2').hidden = true;
+    // Intet udfyldt: spring direkte til tak
+    if (!extra.gener.length && !extra.email && !extra.bemaerkning) { showStep(3); return; }
+    btn.disabled = true;
+    post({ type: 'extra', navn: booking.navn, telefon: booking.telefon, postnummer: booking.postnummer,
+      gener: extra.gener, email: extra.email, bemaerkning: extra.bemaerkning })
+      .then(function () { showStep(3); }, function () { $('#sendErr2').hidden = false; })
+      .then(function () { btn.disabled = false; });
+  });
+
+  $('#reset').addEventListener('click', function () {
+    form.reset();
+    tried = false; booking = null; symSel = []; painSel = [];
+    $$('.chip').forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
+    $('#sendErr').hidden = true; $('#sendErr2').hidden = true;
+    renderSym(); paint(); showStep(1);
+  });
 
   // Glidende anmeldelser (dubleres så båndet kan køre i ring)
   (function () {
@@ -1103,7 +1102,7 @@ RYGTJEK_BODY_END;
       return c;
     }
     var set = REVIEWS.concat(REVIEWS);
-    set.forEach(function (r, i) { track.appendChild(card(r, false)); });
+    set.forEach(function (r) { track.appendChild(card(r, false)); });
     set.forEach(function (r) { track.appendChild(card(r, true)); });
   })();
 
@@ -1122,39 +1121,21 @@ RYGTJEK_BODY_END;
     document.head.appendChild(tps);
   }
 
-  // Video med Simon
-  if (VIDEO.src) {
-    var frame = $('#videoFrame');
-    var yt = VIDEO.src.match(/(?:youtu\.be\/|v=|shorts\/)([\w-]{11})/);
-    var vm = VIDEO.src.match(/vimeo\.com\/(\d+)/);
-    if (yt || vm) {
-      var ifr = document.createElement('iframe');
-      ifr.src = yt ? 'https://www.youtube-nocookie.com/embed/' + yt[1] + '?rel=0' : 'https://player.vimeo.com/video/' + vm[1];
-      ifr.allow = 'autoplay; fullscreen; picture-in-picture';
-      ifr.allowFullscreen = true;
-      ifr.title = 'Simon fortæller om rygtjekket';
-      frame.appendChild(ifr);
-    } else {
-      // Videoen har indbrændte undertekster, så den starter uden lyd og kører i ring
-      var v = document.createElement('video');
-      v.src = VIDEO.src; v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'metadata';
-      v.setAttribute('playsinline', ''); v.setAttribute('aria-label', 'Simon fortæller om rygtjekket');
-      if (VIDEO.poster) v.poster = VIDEO.poster;
-      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (reduce) v.controls = true; else v.autoplay = true;
-      frame.appendChild(v);
-      var snd = el('button', 'vid-sound', 'Slå lyd til');
-      snd.type = 'button';
-      snd.setAttribute('aria-pressed', 'false');
-      snd.addEventListener('click', function () {
-        v.muted = !v.muted;
-        if (!v.muted) { v.currentTime = 0; v.play(); }
-        snd.setAttribute('aria-pressed', !v.muted);
-        snd.textContent = v.muted ? 'Slå lyd til' : 'Slå lyd fra';
-      });
-      frame.appendChild(snd);
+  // Video med Simon: starter uden lyd (indbrændte undertekster), lyd kan slås til
+  var video = $('#simonVideo');
+  var soundBtn = $('#vidSound');
+  if (video && soundBtn) {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      video.removeAttribute('autoplay'); video.pause(); video.controls = true;
     }
-    $('#videoSection').hidden = false;
+    soundBtn.addEventListener('click', function () {
+      video.muted = !video.muted;
+      if (!video.muted) { video.currentTime = 0; video.play(); }
+      soundBtn.setAttribute('aria-pressed', video.muted ? 'false' : 'true');
+      $('.sound-on', soundBtn).style.display = video.muted ? 'none' : '';
+      $('.sound-off', soundBtn).style.display = video.muted ? '' : 'none';
+      $('span', soundBtn).textContent = video.muted ? 'Slå lyd til' : 'Slå lyd fra';
+    });
   }
 
   // Mobilmenu
@@ -1185,13 +1166,14 @@ RYGTJEK_BODY_END;
   document.addEventListener('click', function (e) { if (!e.target.closest('.nav-item')) closeSubs(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSubs(); });
 
-  // Scroll til formular
+  // Scroll til formularen (og sæt fokus i navnefeltet)
   var card = $('#book');
   $$('[data-to-form]').forEach(function (a) {
     a.addEventListener('click', function (e) {
       e.preventDefault();
       var offset = window.innerWidth <= 900 ? 12 : 90;
       window.scrollTo({ top: card.getBoundingClientRect().top + window.scrollY - offset, behavior: 'smooth' });
+      setTimeout(function () { if (!$('#step1').hidden) try { fields.navn.focus({ preventScroll: true }); } catch (_) {} }, 500);
     });
   });
 
@@ -1219,26 +1201,7 @@ RYGTJEK_BODY_END;
     });
   }
 
-  // FAQ
-  var openFaq = 0;
-  function renderFaq() {
-    var list = $('#faqList');
-    list.innerHTML = '';
-    FAQS.forEach(function (f, i) {
-      var open = openFaq === i;
-      var item = el('div', 'faq-item');
-      var btn = el('button', 'faq-q');
-      btn.type = 'button';
-      btn.setAttribute('aria-expanded', open);
-      btn.appendChild(document.createTextNode(f[0]));
-      btn.appendChild(el('span', 'faq-icon', open ? '–' : '+'));
-      btn.addEventListener('click', function () { openFaq = open ? -1 : i; renderFaq(); });
-      item.appendChild(btn);
-      if (open) item.appendChild(el('p', 'faq-a', f[1]));
-      list.appendChild(item);
-    });
-  }
-  renderFaq();
+  renderSym(); paint();
 })();
 RYGTJEK_JS_END;
 

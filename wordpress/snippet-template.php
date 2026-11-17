@@ -103,17 +103,20 @@ if ( ! defined( 'CARELAX_RYGTJEK_LOADED' ) ) {
 				return $ok;
 			}
 
+			// "booking" = trin 1 (navn, telefon, postnummer, tjekliste), "extra" = valgfrit trin 2.
+			$type  = ( isset( $p['type'] ) && 'extra' === $p['type'] ) ? 'extra' : 'booking';
 			$navn  = sanitize_text_field( isset( $p['navn'] ) ? (string) $p['navn'] : '' );
 			$tlf   = preg_replace( '/\D/', '', isset( $p['telefon'] ) ? (string) $p['telefon'] : '' );
 			$post  = preg_replace( '/\D/', '', isset( $p['postnummer'] ) ? (string) $p['postnummer'] : '' );
 			$email = sanitize_email( isset( $p['email'] ) ? (string) $p['email'] : '' );
 			$note  = sanitize_textarea_field( isset( $p['bemaerkning'] ) ? (string) $p['bemaerkning'] : '' );
 			$side  = esc_url_raw( isset( $p['side'] ) ? (string) $p['side'] : '' );
-			$gener = array_values( array_intersect(
-				array( 'Ondt i ryggen', 'Nakke & skuldre', 'Lænd', 'Søvnløshed', 'Gammel madras' ),
-				array_map( 'strval', isset( $p['gener'] ) ? (array) $p['gener'] : array() )
-			) );
-			$variant = isset( $p['variant'] ) && is_array( $p['variant'] ) ? $p['variant'] : array();
+			// Kun kendte valg accepteres (samme lister som i app.js).
+			$pick = function ( $key, $allowed ) use ( $p ) {
+				return array_values( array_intersect( $allowed, array_map( 'strval', isset( $p[ $key ] ) ? (array) $p[ $key ] : array() ) ) );
+			};
+			$symptomer = $pick( 'symptomer', array( 'Stiv i lænden om morgenen', 'Ondt i nakke eller skuldre', 'Du sover arm eller skulder', 'Du vender dig hele natten', 'Madrassen er over 8-10 år gammel', 'Du vågner træt' ) );
+			$gener     = $pick( 'gener', array( 'Ondt i ryggen', 'Nakke og skuldre', 'Lænd', 'Søvnløshed', 'Gammel madras' ) );
 
 			if ( mb_strlen( $navn ) < 2 || mb_strlen( $navn ) > 100 || 8 !== strlen( $tlf ) || 4 !== strlen( $post ) ) {
 				return new WP_REST_Response( array( 'ok' => false, 'error' => 'invalid' ), 400 );
@@ -122,6 +125,10 @@ if ( ! defined( 'CARELAX_RYGTJEK_LOADED' ) ) {
 				$email = '';
 			}
 			$note = mb_substr( $note, 0, 2000 );
+			// Ekstra oplysninger uden indhold: intet at sende.
+			if ( 'extra' === $type && ! $gener && ! $email && '' === $note ) {
+				return $ok;
+			}
 
 			// Højst 20 bookinger pr. IP-adresse pr. 10 minutter.
 			$key = 'carelax_rygtjek_' . md5( isset( $_SERVER['REMOTE_ADDR'] ) ? (string) $_SERVER['REMOTE_ADDR'] : '' );
@@ -131,25 +138,30 @@ if ( ! defined( 'CARELAX_RYGTJEK_LOADED' ) ) {
 			}
 			set_transient( $key, $n + 1, 10 * MINUTE_IN_SECONDS );
 
-			$variant_txt = 'overskrift: ' . ( isset( $variant['headline'] ) ? sanitize_key( $variant['headline'] ) : '-' )
-				. ', trin: ' . ( isset( $variant['steps'] ) ? (int) $variant['steps'] : '-' );
 			$body = 'Fra: ' . $navn . "\n"
-				. 'Email: ' . ( $email ? $email : '(ikke udfyldt)' ) . "\n"
+				. ( $email ? 'Email: ' . $email . "\n" : '' )
 				. 'Telefon: ' . implode( ' ', str_split( $tlf, 2 ) ) . "\n"
-				. 'Post-nr: ' . $post . "\n\n"
-				. 'Gener: ' . ( $gener ? implode( ', ', $gener ) : '(ingen valgt)' ) . "\n\n"
-				. "Evt. bemærkning:\n" . ( '' !== $note ? $note : '(ingen)' ) . "\n\n"
-				. "-- \n"
+				. 'Post-nr: ' . $post . "\n\n";
+			if ( 'booking' === $type ) {
+				$subject = 'Booking af gratis rygtjek';
+				$body   .= 'Kender du det? (tjekliste): ' . ( $symptomer ? implode( ', ', $symptomer ) : '(intet valgt)' ) . "\n\n"
+					. "Kunden kan tilføje gener, e-mail og en bemærkning bagefter. De kommer i så fald i en separat mail.\n\n";
+			} else {
+				$subject = 'Booking af gratis rygtjek – ekstra oplysninger';
+				$body   .= 'Gener: ' . ( $gener ? implode( ', ', $gener ) : '(ingen valgt)' ) . "\n\n"
+					. "Evt. bemærkning:\n" . ( '' !== $note ? $note : '(ingen)' ) . "\n\n"
+					. "Ekstra oplysninger til en booking, der allerede er sendt.\n\n";
+			}
+			$body .= "-- \n"
 				. 'Denne e-mail er afsendt fra rygtjek-landingssiden på ' . get_bloginfo( 'name' ) . "\n"
-				. 'Side: ' . ( $side ? $side : home_url( '/' ) ) . "\n"
-				. 'Variant: ' . $variant_txt;
+				. 'Side: ' . ( $side ? $side : home_url( '/' ) );
 
 			$s       = carelax_rygtjek_mail_settings();
 			$headers = array( 'From: ' . $s['sender'] );
 			if ( $email ) {
 				$headers[] = 'Reply-To: ' . $email;
 			}
-			if ( ! wp_mail( $s['to'], 'Booking af gratis rygtjek', $body, $headers ) ) {
+			if ( ! wp_mail( $s['to'], $subject, $body, $headers ) ) {
 				return new WP_REST_Response( array( 'ok' => false, 'error' => 'mail' ), 500 );
 			}
 			return $ok;

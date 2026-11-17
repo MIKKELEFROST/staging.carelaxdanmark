@@ -1,19 +1,22 @@
-# Carelax – Gratis ergonomisk rygtjek (CRO v2)
+# Carelax – Gratis ergonomisk rygtjek
 
-Statisk landingsside (HTML/CSS/JS), bygget ud fra Claude Design-filen `Rygtjek - CRO v2`. Deployes direkte på Vercel uden build-trin.
+Statisk landingsside (HTML/CSS/JS). Indholdet følger Bilals "Rygtjek landingpage v2". Header, den grønne tal-bjælke, Trustpilot, Sund Forskning og footer (inkl. "Klar til en bedre nattesøvn?") er beholdt fra den tidligere side. Deployes direkte på Vercel uden build-trin.
 
 ## Varianter via URL
-- `?headline=problem`: overskriften "Vågner du med ondt i ryggen?" (standard: "Sov bedre…")
-- `?steps=1`: formularen i ét trin (standard: 2 trin)
 - `?sticky=0`: slå den faste bjælke fra
 - `?stats=0` / `?press=0`: skjul tal- eller Sund Forskning-sektionen
 
-## Noter
-- Formularen har endnu ingen backend. Sæt `data-endpoint="https://…"` på `<form id="form">`, så sendes bookingen som JSON.
-- Specialistfoto: læg billedet i `assets/specialist.jpg`, så vises det automatisk.
+## Formularen
+- Trin 1 (navn, telefon, postnummer + valgte punkter fra "Kender du det?") sender bookingen. Trin 2 (gener, e-mail, bemærkning) er valgfrit og sendes som en ekstra mail.
+- På WordPress sender kodestykket mails til modtagerne på Contact Form 7-formularen "Ergonomisk rygtjek" (ID 1883). Se `wordpress/snippet-template.php`.
+- Uden endpoint (Vercel-demoen) virker formularen, men intet sendes.
+- Listerne `SYMPTOMS` og `PAINS` i `app.js` skal matche listerne i kodestykket.
+
+## WordPress
+`python3 wordpress/build.py` bygger `wordpress/dist/carelax-rygtjek-snippet.php` (indsættes i Snippets) og `wordpress/dist/medier/` (filer med præfiks `rygtjek-` til Medier). Ret i `index.html`, `styles.css`, `app.js` eller `wordpress/snippet-template.php`, ikke i `dist`.
 
 ## Trustpilot live (kun seng-anmeldelser)
-Indsæt jeres Business Unit ID i `TRUSTPILOT.businessUnitId` øverst i `app.js`. Så erstattes billedet af den rigtige TrustBox, filtreret på tagget `seng`. Kræver at anmeldelserne er tagget i Trustpilot Business, og at domænet er tilladt for TrustBoxen.
+Indsæt jeres Business Unit ID i `TRUSTPILOT.businessUnitId` øverst i `app.js`. Så erstattes de glidende anmeldelser af den rigtige TrustBox, filtreret på tagget `seng`. Kræver at anmeldelserne er tagget i Trustpilot Business, og at domænet er tilladt for TrustBoxen.
 
 ## Video med Simon
-Sæt `VIDEO.src` i `app.js` til en mp4 (fx `assets/simon.mp4`) eller et YouTube/Vimeo-link. Sektionen vises først, når der er en video.
+Videoen ligger i `assets/simon.mp4` (plakatbillede `assets/simon-poster.webp`) og vises i "Sådan foregår det". Udskift filen for at skifte video.
