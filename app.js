@@ -1,9 +1,8 @@
 (function () {
-  // Varianter styres via URL, fx ?sticky=0&stats=0&press=0
+  // Varianter styres via URL, fx ?sticky=0&press=0
   var q = new URLSearchParams(location.search);
   var cfg = {
     sticky: q.get('sticky') !== '0',
-    stats: q.get('stats') !== '0',
     press: q.get('press') !== '0'
   };
 
@@ -59,7 +58,6 @@
   var el = function (tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
   // Varianter
-  if (!cfg.stats) $('[data-section="stats"]').remove();
   if (!cfg.press) $('[data-section="press"]').remove();
 
   // På WordPress sætter kodestykket window.CARELAX_RYGTJEK.endpoint (mail til samme modtagere som den

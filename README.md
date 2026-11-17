@@ -1,10 +1,10 @@
 # Carelax – Gratis ergonomisk rygtjek
 
-Statisk landingsside (HTML/CSS/JS). Indholdet følger Bilals "Rygtjek landingpage v2". Header, den grønne tal-bjælke, Trustpilot, Sund Forskning og footer (inkl. "Klar til en bedre nattesøvn?") er beholdt fra den tidligere side. Deployes direkte på Vercel uden build-trin.
+Statisk landingsside (HTML/CSS/JS). Indholdet følger Bilals "Rygtjek landingpage v2". Header, Trustpilot, Sund Forskning og footer (inkl. "Klar til en bedre nattesøvn?") er beholdt fra den tidligere side. Deployes direkte på Vercel uden build-trin.
 
 ## Varianter via URL
 - `?sticky=0`: slå den faste bjælke fra
-- `?stats=0` / `?press=0`: skjul tal- eller Sund Forskning-sektionen
+- `?press=0`: skjul Sund Forskning-sektionen
 
 ## Formularen
 - Trin 1 (navn, telefon, postnummer + valgte punkter fra "Kender du det?") sender bookingen. Trin 2 (gener, e-mail, bemærkning) er valgfrit og sendes som en ekstra mail.

@@ -396,11 +396,6 @@ textarea.input{height:72px;padding:12px 14px;resize:none}
 .faq details p{color:var(--muted);padding:0 48px 22px 0;font-size:15.5px;line-height:1.75}
 
 /* Stats */
-.stats{background:#33b048;color:#fff}
-.stats .wrap{padding:40px 0;display:grid;grid-template-columns:auto auto 1fr;gap:64px;align-items:center}
-.stat-n{font-family:Raleway,sans-serif;font-weight:800;font-size:52px;line-height:1}
-.stat-l{margin-top:8px;font-size:14px;font-weight:600}
-.stats p{font-size:16px;line-height:1.7;border-left:2px solid rgba(255,255,255,.4);padding-left:32px;text-wrap:pretty}
 
 /* Reviews */
 .reviews{background:#fff;padding:100px 0 90px}
@@ -442,7 +437,6 @@ textarea.input{height:72px;padding:12px 14px;resize:none}
   .nav-tel{padding-left:16px}
   .hero .wrap{grid-template-columns:minmax(0,1fr) 420px;gap:44px}
   .hero h1{font-size:48px}
-  .stats .wrap{padding-left:24px;padding-right:24px;gap:48px}
   .split{gap:44px}
 }
 
@@ -504,11 +498,6 @@ textarea.input{height:72px;padding:12px 14px;resize:none}
   .card-body{padding:24px 20px 22px}
   .card h2{font-size:22px}
   .card-foot{padding:14px 20px;flex-wrap:wrap;gap:4px 12px}
-
-  /* Tal */
-  .stats .wrap{grid-template-columns:1fr 1fr;gap:28px 24px;padding:36px 24px}
-  .stat-n{font-size:40px}
-  .stats p{grid-column:1/-1;border-left:0;border-top:2px solid rgba(255,255,255,.4);padding-left:0;padding-top:20px;font-size:15px}
 
   /* Sektioner generelt */
   .sec,.reviews{padding:64px 0}
@@ -572,8 +561,6 @@ textarea.input{height:72px;padding:12px 14px;resize:none}
   .row2{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
   .btn-primary{font-size:16px}
   .trust{grid-template-columns:minmax(0,1fr);gap:12px}
-  .stat-n{font-size:34px}
-  .stats .wrap{gap:24px 16px;padding-left:16px;padding-right:16px}
   .person-in{padding:20px}
   .symptoms{grid-template-columns:minmax(0,1fr)}
   .sym{padding:16px}
@@ -768,14 +755,6 @@ RYGTJEK_CSS_END;
   </div>
 </section>
 
-<section class="stats" data-section="stats">
-  <div class="wrap">
-    <div><div class="stat-n">1 ud af 5</div><div class="stat-l">danskere oplever problemer med søvnløshed</div></div>
-    <div><div class="stat-n">10 %</div><div class="stat-l">af befolkningen har kroniske søvnproblemer</div></div>
-    <p>Dårlig søvn påvirker energi og koncentration – og den forkerte sovestilling kan føre til smerter i nakke, ryg og lænd. Ofte starter løsningen med madrassen.</p>
-  </div>
-</section>
-
 <section class="sec process">
   <div class="wrap">
     <div class="sec-intro">
@@ -943,11 +922,10 @@ RYGTJEK_BODY_END;
 
 		$js = <<<'RYGTJEK_JS_END'
 (function () {
-  // Varianter styres via URL, fx ?sticky=0&stats=0&press=0
+  // Varianter styres via URL, fx ?sticky=0&press=0
   var q = new URLSearchParams(location.search);
   var cfg = {
     sticky: q.get('sticky') !== '0',
-    stats: q.get('stats') !== '0',
     press: q.get('press') !== '0'
   };
 
@@ -1003,7 +981,6 @@ RYGTJEK_BODY_END;
   var el = function (tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
   // Varianter
-  if (!cfg.stats) $('[data-section="stats"]').remove();
   if (!cfg.press) $('[data-section="press"]').remove();
 
   // På WordPress sætter kodestykket window.CARELAX_RYGTJEK.endpoint (mail til samme modtagere som den
