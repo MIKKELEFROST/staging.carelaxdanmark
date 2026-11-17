@@ -100,6 +100,9 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
 .chip{border:1.5px solid #dcdcdc;background:#fff;color:#222;font-size:13.5px;font-weight:600;padding:8px 14px;border-radius:30px;cursor:pointer}
 .chip[aria-pressed="true"]{border-color:#33b048;background:#e7f5e9}
 .form-err{font-size:13px;color:#c62828;font-weight:600}
+.send-err{margin-top:12px}
+.send-err a{text-decoration:underline;white-space:nowrap}
+.hp{position:absolute!important;left:-9999px;width:1px;height:1px;overflow:hidden}
 .btn-primary{height:58px;border:0;border-radius:8px;background:#33b048;color:#fff;font-size:17px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 8px 20px rgba(51,176,72,.35)}
 .btn-primary:hover{background:#2b9a3e}
 .btn-primary:disabled{opacity:.7;cursor:wait}

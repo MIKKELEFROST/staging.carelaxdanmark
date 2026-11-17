@@ -65,7 +65,106 @@ if ( ! defined( 'CARELAX_RYGTJEK_LOADED' ) ) {
 		}
 	}, 9999 );
 
-	// 3) Udskriv landingssiden. wp_head()/wp_footer() bevares, så SEO (Rank Math),
+	// 3) Bookinger fra formularen sendes som mail – samme opsætning som den gamle rygtjek-formular
+	//    (Contact Form 7 "Ergonomisk rygtjek", ID 1883). Modtagere og afsender hentes fra den formular,
+	//    så de stadig styres under Kontakt → Ergonomisk rygtjek → Mail. Mailen logges af WP Mail Catcher.
+	if ( ! defined( 'CARELAX_RYGTJEK_CF7_FORM' ) ) {
+		define( 'CARELAX_RYGTJEK_CF7_FORM', 1883 );
+	}
+
+	if ( ! function_exists( 'carelax_rygtjek_mail_settings' ) ) {
+		function carelax_rygtjek_mail_settings() {
+			$to     = array( 'info@carelaxdanmark.dk', 'sam@carelaxdanmark.dk' );
+			$sender = 'Carelax Danmark <wordpress@carelaxdanmark.dk>';
+			if ( class_exists( 'WPCF7_ContactForm' ) ) {
+				$cf7 = WPCF7_ContactForm::get_instance( CARELAX_RYGTJEK_CF7_FORM );
+				if ( $cf7 ) {
+					$mail = (array) $cf7->prop( 'mail' );
+					$list = array_values( array_filter( array_map( 'trim', explode( ',', isset( $mail['recipient'] ) ? (string) $mail['recipient'] : '' ) ), 'is_email' ) );
+					if ( $list ) {
+						$to = $list;
+					}
+					if ( ! empty( $mail['sender'] ) && false === strpos( $mail['sender'], '[' ) ) {
+						$sender = $mail['sender'];
+					}
+				}
+			}
+			return array( 'to' => $to, 'sender' => $sender );
+		}
+	}
+
+	if ( ! function_exists( 'carelax_rygtjek_booking' ) ) {
+		function carelax_rygtjek_booking( $request ) {
+			$p  = (array) $request->get_json_params();
+			$ok = new WP_REST_Response( array( 'ok' => true ), 200 );
+
+			// Spam: skjult felt udfyldt eller sendt urealistisk hurtigt → svar "ok", men send intet.
+			if ( ! empty( $p['website'] ) || ( isset( $p['t'] ) && (int) $p['t'] < 2500 ) ) {
+				return $ok;
+			}
+
+			$navn  = sanitize_text_field( isset( $p['navn'] ) ? (string) $p['navn'] : '' );
+			$tlf   = preg_replace( '/\D/', '', isset( $p['telefon'] ) ? (string) $p['telefon'] : '' );
+			$post  = preg_replace( '/\D/', '', isset( $p['postnummer'] ) ? (string) $p['postnummer'] : '' );
+			$email = sanitize_email( isset( $p['email'] ) ? (string) $p['email'] : '' );
+			$note  = sanitize_textarea_field( isset( $p['bemaerkning'] ) ? (string) $p['bemaerkning'] : '' );
+			$side  = esc_url_raw( isset( $p['side'] ) ? (string) $p['side'] : '' );
+			$gener = array_values( array_intersect(
+				array( 'Ondt i ryggen', 'Nakke & skuldre', 'Lænd', 'Søvnløshed', 'Gammel madras' ),
+				array_map( 'strval', isset( $p['gener'] ) ? (array) $p['gener'] : array() )
+			) );
+			$variant = isset( $p['variant'] ) && is_array( $p['variant'] ) ? $p['variant'] : array();
+
+			if ( mb_strlen( $navn ) < 2 || mb_strlen( $navn ) > 100 || 8 !== strlen( $tlf ) || 4 !== strlen( $post ) ) {
+				return new WP_REST_Response( array( 'ok' => false, 'error' => 'invalid' ), 400 );
+			}
+			if ( ! is_email( $email ) ) {
+				$email = '';
+			}
+			$note = mb_substr( $note, 0, 2000 );
+
+			// Højst 20 bookinger pr. IP-adresse pr. 10 minutter.
+			$key = 'carelax_rygtjek_' . md5( isset( $_SERVER['REMOTE_ADDR'] ) ? (string) $_SERVER['REMOTE_ADDR'] : '' );
+			$n   = (int) get_transient( $key );
+			if ( $n >= 20 ) {
+				return new WP_REST_Response( array( 'ok' => false, 'error' => 'rate' ), 429 );
+			}
+			set_transient( $key, $n + 1, 10 * MINUTE_IN_SECONDS );
+
+			$variant_txt = 'overskrift: ' . ( isset( $variant['headline'] ) ? sanitize_key( $variant['headline'] ) : '-' )
+				. ', trin: ' . ( isset( $variant['steps'] ) ? (int) $variant['steps'] : '-' );
+			$body = 'Fra: ' . $navn . "\n"
+				. 'Email: ' . ( $email ? $email : '(ikke udfyldt)' ) . "\n"
+				. 'Telefon: ' . implode( ' ', str_split( $tlf, 2 ) ) . "\n"
+				. 'Post-nr: ' . $post . "\n\n"
+				. 'Gener: ' . ( $gener ? implode( ', ', $gener ) : '(ingen valgt)' ) . "\n\n"
+				. "Evt. bemærkning:\n" . ( '' !== $note ? $note : '(ingen)' ) . "\n\n"
+				. "-- \n"
+				. 'Denne e-mail er afsendt fra rygtjek-landingssiden på ' . get_bloginfo( 'name' ) . "\n"
+				. 'Side: ' . ( $side ? $side : home_url( '/' ) ) . "\n"
+				. 'Variant: ' . $variant_txt;
+
+			$s       = carelax_rygtjek_mail_settings();
+			$headers = array( 'From: ' . $s['sender'] );
+			if ( $email ) {
+				$headers[] = 'Reply-To: ' . $email;
+			}
+			if ( ! wp_mail( $s['to'], 'Booking af gratis rygtjek', $body, $headers ) ) {
+				return new WP_REST_Response( array( 'ok' => false, 'error' => 'mail' ), 500 );
+			}
+			return $ok;
+		}
+	}
+
+	add_action( 'rest_api_init', function () {
+		register_rest_route( 'carelax/v1', '/rygtjek', array(
+			'methods'             => 'POST',
+			'callback'            => 'carelax_rygtjek_booking',
+			'permission_callback' => '__return_true',
+		) );
+	} );
+
+	// 4) Udskriv landingssiden. wp_head()/wp_footer() bevares, så SEO (Rank Math),
 	//    cookie-samtykke, Google Tag Manager og pixels virker som på resten af sitet.
 	add_action( 'template_redirect', function () {
 		if ( ! carelax_rygtjek_is_active() ) {
@@ -176,6 +275,9 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
 .chip{border:1.5px solid #dcdcdc;background:#fff;color:#222;font-size:13.5px;font-weight:600;padding:8px 14px;border-radius:30px;cursor:pointer}
 .chip[aria-pressed="true"]{border-color:#33b048;background:#e7f5e9}
 .form-err{font-size:13px;color:#c62828;font-weight:600}
+.send-err{margin-top:12px}
+.send-err a{text-decoration:underline;white-space:nowrap}
+.hp{position:absolute!important;left:-9999px;width:1px;height:1px;overflow:hidden}
 .btn-primary{height:58px;border:0;border-radius:8px;background:#33b048;color:#fff;font-size:17px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 8px 20px rgba(51,176,72,.35)}
 .btn-primary:hover{background:#2b9a3e}
 .btn-primary:disabled{opacity:.7;cursor:wait}
@@ -626,6 +728,8 @@ RYGTJEK_CSS_END;
               <div class="pains"></div>
             </div>
             <p class="form-err" id="formErr" hidden>Udfyld navn, telefon (8 cifre) og postnummer (4 cifre).</p>
+            <!-- Spamfælde: skjult felt, som kun robotter udfylder -->
+            <label class="hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
             <button type="submit" class="btn-primary" id="primary"><span id="primaryLabel">Næste: Vælg dine gener</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
           </div>
 
@@ -641,6 +745,7 @@ RYGTJEK_CSS_END;
               <button type="submit" class="btn-primary">Send booking</button>
             </div>
           </div>
+          <p class="form-err send-err" id="sendErr" role="alert" hidden>Din booking blev ikke sendt. Prøv igen, eller ring på <a href="tel:+4578155703">78 15 57 03</a>.</p>
 
           <div class="assure">
             <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#33b048" stroke-width="3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Koster 0 kr.</span>
@@ -929,25 +1034,36 @@ RYGTJEK_BODY_END;
 
   Object.keys(fields).forEach(function (k) { fields[k].addEventListener('input', render); });
 
+  var loadedAt = Date.now();
   function send() {
     var data = {
       navn: fields.navn.value.trim(), telefon: fields.tlf.value.trim(), postnummer: fields.post.value.trim(),
       gener: state.pains.slice(), email: form.mail.value.trim(), bemaerkning: form.note.value.trim(),
-      variant: { headline: cfg.headline, steps: cfg.twoStep ? 2 : 1 }
+      variant: { headline: cfg.headline, steps: cfg.twoStep ? 2 : 1 },
+      side: location.href,
+      website: form.website ? form.website.value : '', // spamfælde
+      t: Date.now() - loadedAt
     };
-    // Demo: ingen backend endnu. Sæt data-endpoint på <form> for at sende bookingen som JSON.
-    var endpoint = form.dataset.endpoint;
+    // På WordPress sætter kodestykket window.CARELAX_RYGTJEK.endpoint (mail til samme modtagere som
+    // den gamle rygtjek-formular). Uden endpoint (fx Vercel-demoen) vises tak-siden uden at sende.
+    var endpoint = form.dataset.endpoint || (window.CARELAX_RYGTJEK && window.CARELAX_RYGTJEK.endpoint);
+    var buttons = $$('button[type="submit"]', form);
     var done = function () {
       $('#firstName').textContent = data.navn.split(' ')[0];
       $('#thanksTlf').textContent = data.telefon;
       form.hidden = true;
       $('#thanks').hidden = false;
     };
+    $('#sendErr').hidden = true;
     if (!endpoint) return done();
-    $$('button[type="submit"]', form).forEach(function (b) { b.disabled = true; });
+    buttons.forEach(function (b) { b.disabled = true; });
     fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
-      .then(done, done)
-      .then(function () { $$('button[type="submit"]', form).forEach(function (b) { b.disabled = false; }); });
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        done();
+      })
+      .catch(function () { $('#sendErr').hidden = false; })
+      .then(function () { buttons.forEach(function (b) { b.disabled = false; }); });
   }
 
   form.addEventListener('submit', function (e) {
@@ -962,6 +1078,7 @@ RYGTJEK_BODY_END;
     state = { step: 1, tried: false, pains: [] };
     form.hidden = false;
     $('#thanks').hidden = true;
+    $('#sendErr').hidden = true;
     renderPains(); render();
   });
 
@@ -1158,6 +1275,7 @@ RYGTJEK_JS_END;
 		}
 		echo $body; // phpcs:ignore WordPress.Security.EscapeOutput
 ?>
+<script>window.CARELAX_RYGTJEK = { endpoint: <?php echo wp_json_encode( esc_url_raw( rest_url( 'carelax/v1/rygtjek' ) ) ); ?> };</script>
 <script id="carelax-rygtjek-js">
 <?php echo $js; // phpcs:ignore WordPress.Security.EscapeOutput ?>
 </script>

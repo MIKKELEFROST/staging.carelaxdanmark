@@ -115,25 +115,36 @@
 
   Object.keys(fields).forEach(function (k) { fields[k].addEventListener('input', render); });
 
+  var loadedAt = Date.now();
   function send() {
     var data = {
       navn: fields.navn.value.trim(), telefon: fields.tlf.value.trim(), postnummer: fields.post.value.trim(),
       gener: state.pains.slice(), email: form.mail.value.trim(), bemaerkning: form.note.value.trim(),
-      variant: { headline: cfg.headline, steps: cfg.twoStep ? 2 : 1 }
+      variant: { headline: cfg.headline, steps: cfg.twoStep ? 2 : 1 },
+      side: location.href,
+      website: form.website ? form.website.value : '', // spamfælde
+      t: Date.now() - loadedAt
     };
-    // Demo: ingen backend endnu. Sæt data-endpoint på <form> for at sende bookingen som JSON.
-    var endpoint = form.dataset.endpoint;
+    // På WordPress sætter kodestykket window.CARELAX_RYGTJEK.endpoint (mail til samme modtagere som
+    // den gamle rygtjek-formular). Uden endpoint (fx Vercel-demoen) vises tak-siden uden at sende.
+    var endpoint = form.dataset.endpoint || (window.CARELAX_RYGTJEK && window.CARELAX_RYGTJEK.endpoint);
+    var buttons = $$('button[type="submit"]', form);
     var done = function () {
       $('#firstName').textContent = data.navn.split(' ')[0];
       $('#thanksTlf').textContent = data.telefon;
       form.hidden = true;
       $('#thanks').hidden = false;
     };
+    $('#sendErr').hidden = true;
     if (!endpoint) return done();
-    $$('button[type="submit"]', form).forEach(function (b) { b.disabled = true; });
+    buttons.forEach(function (b) { b.disabled = true; });
     fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
-      .then(done, done)
-      .then(function () { $$('button[type="submit"]', form).forEach(function (b) { b.disabled = false; }); });
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        done();
+      })
+      .catch(function () { $('#sendErr').hidden = false; })
+      .then(function () { buttons.forEach(function (b) { b.disabled = false; }); });
   }
 
   form.addEventListener('submit', function (e) {
@@ -148,6 +159,7 @@
     state = { step: 1, tried: false, pains: [] };
     form.hidden = false;
     $('#thanks').hidden = true;
+    $('#sendErr').hidden = true;
     renderPains(); render();
   });
 
