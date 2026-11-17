@@ -9,48 +9,71 @@
  * Genereret af wordpress/build.py i repoet staging.carelaxdanmark – ret i repoet, ikke her.
  */
 
-// Adressen på mappen, hvor filerne fra "medier" er uploadet (Medier). Skal slutte med /
-if ( ! defined( 'CARELAX_RYGTJEK_ASSETS' ) ) {
-	define( 'CARELAX_RYGTJEK_ASSETS', 'https://carelaxdanmark.dk/wp-content/uploads/2026/11/' );
-}
-if ( ! defined( 'CARELAX_RYGTJEK_TEMPLATE' ) ) {
-	define( 'CARELAX_RYGTJEK_TEMPLATE', 'carelax-rygtjek-landingpage' );
-}
+// Indlæs kun én gang, også hvis kodestykket ved en fejl er sat ind to gange.
+if ( ! defined( 'CARELAX_RYGTJEK_LOADED' ) ) {
+	define( 'CARELAX_RYGTJEK_LOADED', true );
 
-// 1) Vis skabelonen i rullemenuen for sider
-add_filter( 'theme_page_templates', function ( $templates ) {
-	$templates[ CARELAX_RYGTJEK_TEMPLATE ] = 'Rygtjek landingpage (ny)';
-	return $templates;
-} );
-
-function carelax_rygtjek_is_active() {
-	return is_singular( 'page' ) && get_page_template_slug( get_queried_object_id() ) === CARELAX_RYGTJEK_TEMPLATE;
-}
-
-// 2) Fjern temaets og plugins' styling på netop denne side, så layoutet ikke forstyrres.
-//    Cookie-banner/samtykke og admin-bjælken beholdes.
-add_action( 'wp_enqueue_scripts', function () {
-	if ( ! carelax_rygtjek_is_active() ) {
-		return;
+	if ( ! defined( 'CARELAX_RYGTJEK_TEMPLATE' ) ) {
+		define( 'CARELAX_RYGTJEK_TEMPLATE', 'carelax-rygtjek-landingpage' );
 	}
-	global $wp_styles;
-	$keep = '/(admin-bar|dashicons|cookie|consent|cmplz|complianz|borlabs|cookiebot|cookieyes|gdpr|moove)/i';
-	foreach ( (array) $wp_styles->queue as $handle ) {
-		if ( ! preg_match( $keep, $handle ) ) {
-			wp_dequeue_style( $handle );
+
+	// 1) Vis skabelonen i rullemenuen for sider
+	add_filter( 'theme_page_templates', function ( $templates ) {
+		$templates[ CARELAX_RYGTJEK_TEMPLATE ] = 'Rygtjek landingpage (ny)';
+		return $templates;
+	} );
+
+	if ( ! function_exists( 'carelax_rygtjek_is_active' ) ) {
+		function carelax_rygtjek_is_active() {
+			return is_singular( 'page' ) && get_page_template_slug( get_queried_object_id() ) === CARELAX_RYGTJEK_TEMPLATE;
 		}
 	}
-}, 9999 );
 
-// 3) Udskriv landingssiden. wp_head()/wp_footer() bevares, så SEO (Rank Math),
-//    cookie-samtykke, Google Tag Manager og pixels virker som på resten af sitet.
-add_action( 'template_redirect', function () {
-	if ( ! carelax_rygtjek_is_active() ) {
-		return;
+	// Mappen i Medier, hvor filerne med præfiks "rygtjek-" ligger. Findes automatisk ud fra
+	// rygtjek-usp0.png, så det virker både med og uden år/måned-mapper i uploads.
+	// Kan overstyres med define( 'CARELAX_RYGTJEK_ASSETS', 'https://…/' ); i wp-config.php.
+	if ( ! function_exists( 'carelax_rygtjek_assets_url' ) ) {
+		function carelax_rygtjek_assets_url() {
+			if ( defined( 'CARELAX_RYGTJEK_ASSETS' ) ) {
+				return CARELAX_RYGTJEK_ASSETS;
+			}
+			global $wpdb;
+			$file = $wpdb->get_var( $wpdb->prepare(
+				"SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = '_wp_attached_file' AND ( meta_value = %s OR meta_value LIKE %s ) ORDER BY meta_id DESC LIMIT 1",
+				'rygtjek-usp0.png',
+				'%/' . $wpdb->esc_like( 'rygtjek-usp0.png' )
+			) );
+			$uploads = wp_get_upload_dir();
+			$base    = trailingslashit( $uploads['baseurl'] );
+			$dir     = $file ? dirname( $file ) : '.';
+			return ( '.' === $dir || '' === $dir ) ? $base : $base . trailingslashit( $dir );
+		}
 	}
-	$assets = CARELAX_RYGTJEK_ASSETS;
 
-	$css = <<<'RYGTJEK_CSS_END'
+	// 2) Fjern temaets og plugins' styling på netop denne side, så layoutet ikke forstyrres.
+	//    Cookie-banner/samtykke og admin-bjælken beholdes.
+	add_action( 'wp_enqueue_scripts', function () {
+		if ( ! carelax_rygtjek_is_active() ) {
+			return;
+		}
+		global $wp_styles;
+		$keep = '/(admin-bar|dashicons|cookie|consent|cmplz|complianz|borlabs|cookiebot|cookieyes|gdpr|moove)/i';
+		foreach ( (array) $wp_styles->queue as $handle ) {
+			if ( ! preg_match( $keep, $handle ) ) {
+				wp_dequeue_style( $handle );
+			}
+		}
+	}, 9999 );
+
+	// 3) Udskriv landingssiden. wp_head()/wp_footer() bevares, så SEO (Rank Math),
+	//    cookie-samtykke, Google Tag Manager og pixels virker som på resten af sitet.
+	add_action( 'template_redirect', function () {
+		if ( ! carelax_rygtjek_is_active() ) {
+			return;
+		}
+		$assets = carelax_rygtjek_assets_url();
+
+		$css = <<<'RYGTJEK_CSS_END'
 :root{--ink:#1f2a24;--muted:#5a645e;--line:#e7e2d9;--cream:#faf8f4;--sand:#f3efe8;--mint:#e9f5eb;--green:#33b048;--green-d:#2b9a3e}
 body{margin:0;background:#fff;font-family:'Open Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
 *{box-sizing:border-box}
@@ -82,6 +105,7 @@ input,textarea,button{font-family:inherit}
 /* Header */
 .header{background:#fff;border-bottom:1px solid var(--line)}
 .header .wrap{height:80px;display:flex;align-items:center;justify-content:space-between;color:var(--ink)}
+.header .logo-link{display:block;line-height:0}
 .header .logo{height:46px;filter:brightness(0)}
 .nav{display:flex;align-items:center;gap:22px;font-size:14px;font-weight:600}
 .nav-active{border:2px solid #33b048;border-radius:3px;padding:6px 11px;font-weight:700}
@@ -415,7 +439,12 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
 .f-contact{display:flex;flex-direction:column;line-height:28px;font-weight:600}
 .f-row{display:flex;align-items:center;gap:8px}
 .f-row svg{flex:none}
-.f-social{width:62px;margin-top:14px;display:block}
+.f-social{position:relative;width:62px;margin-top:14px}
+.f-social img{width:62px;display:block}
+.f-social a{position:absolute;top:0;bottom:0;width:50%}
+.f-social a:first-of-type{left:0}
+.f-social a:last-of-type{right:0}
+.f-gazelle-link{display:block;line-height:0}
 .f-links{display:flex;flex-direction:column;line-height:27px;font-weight:600}
 .f-arrow{color:#33b048}
 .f-news input{width:220px;max-width:100%;background:transparent;border:0;border-bottom:1px solid #888;color:#fff;font:inherit;font-size:13px;padding:6px 0;outline:none}
@@ -490,7 +519,7 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
 @media (max-width:560px){.rv{margin:0 -16px}}
 RYGTJEK_CSS_END;
 
-	$body = <<<'RYGTJEK_BODY_END'
+		$body = <<<'RYGTJEK_BODY_END'
 <div class="page">
 
 <div class="sticky" id="sticky" hidden>
@@ -502,9 +531,9 @@ RYGTJEK_CSS_END;
 
 <header class="header">
   <div class="wrap">
-    <img class="logo" src="https://carelaxdanmark.dk/wp-content/uploads/carelaxdanmark-1-1.svg" alt="Carelax Danmark">
+    <a href="https://carelaxdanmark.dk/" class="logo-link"><img class="logo" src="https://carelaxdanmark.dk/wp-content/uploads/carelaxdanmark-1-1.svg" alt="Carelax Danmark"></a>
     <nav class="nav">
-      <a href="#">Massagestole</a><a href="#">Massageapparater</a><a href="#">Senge</a><a href="#" class="nav-active">Gratis ergonomisk rygtjek</a><a href="#">Erhverv</a><a href="#">Om os</a><a href="#">Viden</a>
+      <a href="https://carelaxdanmark.dk/">Massagestole</a><a href="https://carelaxdanmark.dk/produkt-kategori/massageapparater/">Massageapparater</a><a href="https://carelaxdanmark.dk/produkt-kategori/senge/">Senge</a><a href="https://carelaxdanmark.dk/ergonomisk-rygtjek/" class="nav-active" aria-current="page">Gratis ergonomisk rygtjek</a><a href="https://carelaxdanmark.dk/erhverv/">Erhverv</a><a href="https://carelaxdanmark.dk/om-os/">Om os</a><a href="https://carelaxdanmark.dk/blog/">Viden</a>
       <a href="tel:+4578155703" class="nav-tel"><svg width="14" height="14" viewBox="0 0 24 24" fill="#33b048"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg>78 15 57 03</a>
     </nav>
     <div class="m-actions">
@@ -717,22 +746,22 @@ RYGTJEK_CSS_END;
     <div>
       <h4>Carelax Danmark ApS</h4>
       <div class="f-contact"><div class="f-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M12 3 2 12h3v8h5v-6h4v6h5v-8h3z"/></svg><span>Naverland 25, 2600 Glostrup</span></div><div class="f-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg><span><a href="tel:+4578155703">+45 78 15 57 03</a></span></div><div class="f-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 1 0 5 18.7l-1-1.7A8 8 0 1 1 20 12v1.5a1.5 1.5 0 0 1-3 0V12a5 5 0 1 0-1.5 3.5A3.5 3.5 0 0 0 22 13.5V12A10 10 0 0 0 12 2zm0 13a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg><span><a href="mailto:info@carelaxdanmark.dk">Skriv til os her</a></span></div><div class="f-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2zm0-8h-2V7h2z"/></svg><span>CVR: 38219499</span></div></div>
-      <img src="{{RYGTJEK_ASSETS}}rygtjek-f-social.png" class="f-social" alt="Facebook / Instagram">
+      <div class="f-social"><img src="{{RYGTJEK_ASSETS}}rygtjek-f-social.png" alt=""><a href="https://www.facebook.com/CarelaxDk/" target="_blank" rel="noopener" aria-label="Carelax på Facebook"></a><a href="https://www.instagram.com/carelaxdk/" target="_blank" rel="noopener" aria-label="Carelax på Instagram"></a></div>
     </div>
     <div>
       <h4>Information</h4>
-      <div class="f-links"><a href="#"><span class="f-arrow">›</span> Om Carelax Danmark</a><a href="#"><span class="f-arrow">›</span> Kontakt os</a><a href="#"><span class="f-arrow">›</span> Handelsbetingelser</a><a href="#"><span class="f-arrow">›</span> Fortrydelsesret</a><a href="#"><span class="f-arrow">›</span> Privatlivspolitik</a></div>
+      <div class="f-links"><a href="https://carelaxdanmark.dk/om-os/"><span class="f-arrow">›</span> Om Carelax Danmark</a><a href="https://carelaxdanmark.dk/kontakt/"><span class="f-arrow">›</span> Kontakt os</a><a href="https://carelaxdanmark.dk/handelsbetingelser/"><span class="f-arrow">›</span> Handelsbetingelser</a><a href="https://carelaxdanmark.dk/handelsbetingelser/#fortrydelsesret"><span class="f-arrow">›</span> Fortrydelsesret</a><a href="https://carelaxdanmark.dk/privatlivspolitik/"><span class="f-arrow">›</span> Privatlivspolitik</a></div>
     </div>
     <div>
       <h4>Populære produkter</h4>
-      <div class="f-links"><a href="#"><span class="f-arrow">›</span> Carelax Stratus</a><a href="#"><span class="f-arrow">›</span> Carelax Infinity Pro</a><a href="#"><span class="f-arrow">›</span> Massagepude Relax</a><a href="#"><span class="f-arrow">›</span> CareConcept™ 7 zoner</a></div>
+      <div class="f-links"><a href="https://carelaxdanmark.dk/shop/carelax-stratus/"><span class="f-arrow">›</span> Carelax Stratus</a><a href="https://carelaxdanmark.dk/shop/carelax-infinity-pro/"><span class="f-arrow">›</span> Carelax Infinity Pro</a><a href="https://carelaxdanmark.dk/shop/massagepude-relax/"><span class="f-arrow">›</span> Massagepude Relax</a><a href="https://carelaxdanmark.dk/shop/careconcept-7-zoner/"><span class="f-arrow">›</span> CareConcept™ 7 zoner</a></div>
     </div>
     <div>
       <h4>Tilmeld nyhedsbrev</h4>
       <form class="f-news" onsubmit="return false"><input type="email" placeholder="Indtast din email" aria-label="Email"><div><button type="submit">TILMELD NYHEDSBREV</button></div></form>
     </div>
     <div class="f-badges">
-      <img src="https://carelaxdanmark.dk/wp-content/uploads/gazeller.svg" class="f-gazelle" alt="Børsen Gazelle">
+      <a href="https://borsen.dk/gazelle/" target="_blank" rel="noopener" class="f-gazelle-link"><img src="https://carelaxdanmark.dk/wp-content/uploads/gazeller.svg" class="f-gazelle" alt="Børsen Gazelle"></a>
       <a href="https://dk.trustpilot.com/review/carelaxdanmark.dk" target="_blank" rel="noopener" class="f-tp"><img src="{{RYGTJEK_ASSETS}}rygtjek-f-tp.png" alt="Trustpilot – TrustScore 4,9, 551 anmeldelser"></a>
     </div>
   </div>
@@ -744,7 +773,7 @@ RYGTJEK_CSS_END;
 </div>
 RYGTJEK_BODY_END;
 
-	$js = <<<'RYGTJEK_JS_END'
+		$js = <<<'RYGTJEK_JS_END'
 (function () {
   // Varianter styres via URL, fx ?headline=problem&steps=1&sticky=0&stats=0&press=0
   var q = new URLSearchParams(location.search);
@@ -784,18 +813,20 @@ RYGTJEK_BODY_END;
     ['Hvor foregår rygtjekket?', 'Hjemme hos dig. Vi kommer ud, uanset hvor i landet du bor, så du sparer transporttiden og vi kan vurdere den madras, du sover på.'],
     ['Hvad sker der, når jeg har booket?', 'Vi ringer dig op inden for 24 timer på hverdage og aftaler et tidspunkt, der passer dig.']
   ];
+  // [titel, dato, artikel på sund-forskning.dk]
+  var SF = 'https://sund-forskning.dk/artikler/';
   var MAGS = [
-    ['Madrassen: en forskel ved osteoporose og rygsmerter', '18. februar 2026'],
-    ['Fem centrale sygdomme i bevægeapparatet', '3. december 2025'],
-    ['En nyhed i Danmark til skrøbelige eller hårdt ramte rygge', '9. oktober 2025'],
-    ['Tjek dine symptomer – og pas på din ryg', '15. august 2025'],
-    ['Få scannet din ryg derhjemme', '26. maj 2025'],
-    ['Når skuldrene gør ondt', '4. februar 2025'],
-    ['Har du stenose, skal du både træne og hvile', '2. december 2024'],
-    ['Når der er smerter fra top til tå', '20. november 2024'],
-    ['Lændesmerter tærer på livskvaliteten', '19. september 2024'],
-    ['Når madrassen bliver en del af din terapi', '2. juli 2024'],
-    ['Når madrassen er en del af en livsstrategi', '16. april 2024']
+    ['Madrassen: en forskel ved osteoporose og rygsmerter', '18. februar 2026', SF + 'madrassen-en-forskel-ved-osteoporose-og-rygsmerter/'],
+    ['Fem centrale sygdomme i bevægeapparatet', '3. december 2025', SF + 'fem-centrale-sygdomme-i-bevaegeapparatet/'],
+    ['En nyhed i Danmark til skrøbelige eller hårdt ramte rygge', '9. oktober 2025', SF + 'en-nyhed-i-danmark-til-skroebelige-eller-haardt-ramte-rygge/'],
+    ['Tjek dine symptomer – og pas på din ryg', '15. august 2025', SF + 'tjek-dine-symptomer-og-pas-paa-din-ryg/'],
+    ['Få scannet din ryg derhjemme', '26. maj 2025', SF + 'faa-scannet-din-ryg-derhjemme/'],
+    ['Når skuldrene gør ondt', '4. februar 2025', SF + 'nar-skuldrene-gor-ondt/'],
+    ['Har du stenose, skal du både træne og hvile', '2. december 2024', SF + 'har-du-stenose-skal-du-bade-traene-og-hvile-feb-2025-foto-af-3-omrader-mangler/'],
+    ['Når der er smerter fra top til tå', '20. november 2024', SF + 'nar-der-er-smerter-fra-top-til-ta/'],
+    ['Lændesmerter tærer på livskvaliteten', '19. september 2024', SF + 'laendesmerter-taerer-pa-livskvaliteten/'],
+    ['Når madrassen bliver en del af din terapi', '2. juli 2024', SF + 'nar-madrassen-bliver-en-del-af-din-terapi/'],
+    ['Når madrassen er en del af en livsstrategi', '16. april 2024', SF + 'nar-madrassen-er-en-del-af-en-livsstrategi/']
   ];
 
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -1001,7 +1032,7 @@ RYGTJEK_BODY_END;
   var track = $('#pressTrack');
   if (track) {
     MAGS.forEach(function (m, i) {
-      var a = el('a', 'mag'); a.href = '#';
+      var a = el('a', 'mag'); a.href = m[2]; a.target = '_blank'; a.rel = 'noopener';
       var img = el('img'); img.src = '{{RYGTJEK_ASSETS}}rygtjek-mag' + i + '.webp'; img.alt = ''; img.loading = 'lazy';
       a.appendChild(img);
       a.appendChild(el('div', 'mag-t', m[0]));
@@ -1036,13 +1067,18 @@ RYGTJEK_BODY_END;
 })();
 RYGTJEK_JS_END;
 
-	$css  = str_replace( '{{RYGTJEK_ASSETS}}', $assets, $css );
-	$body = str_replace( '{{RYGTJEK_ASSETS}}', $assets, $body );
-	$js   = str_replace( '{{RYGTJEK_ASSETS}}', $assets, $js );
+		// Kun på WordPress: plugins lægger markup i wp_footer, men deres CSS er fjernet ovenfor.
+		// Indkøbskurven (Side Cart) skjules, da siden ikke har en kurv.
+		$wp_css = '.xoo-wsc-markup,.xoo-wsc-markup-notices{display:none!important}'
+			. '.screen-reader-text{border:0;clip:rect(1px,1px,1px,1px);clip-path:inset(50%);height:1px;margin:-1px;overflow:hidden;padding:0;position:absolute!important;width:1px;word-wrap:normal!important}';
 
-	status_header( 200 );
-	nocache_headers();
-	?><!DOCTYPE html>
+		$css  = str_replace( '{{RYGTJEK_ASSETS}}', $assets, $css );
+		$body = str_replace( '{{RYGTJEK_ASSETS}}', $assets, $body );
+		$js   = str_replace( '{{RYGTJEK_ASSETS}}', $assets, $js );
+
+		status_header( 200 );
+		nocache_headers();
+		?><!DOCTYPE html>
 <html <?php language_attributes(); ?>>
 <head>
 <meta charset="<?php bloginfo( 'charset' ); ?>">
@@ -1054,14 +1090,15 @@ RYGTJEK_JS_END;
 <?php wp_head(); ?>
 <style id="carelax-rygtjek-css">
 <?php echo $css; // phpcs:ignore WordPress.Security.EscapeOutput ?>
+<?php echo $wp_css; // phpcs:ignore WordPress.Security.EscapeOutput ?>
 </style>
 </head>
 <body class="carelax-rygtjek">
 <?php
-	if ( function_exists( 'wp_body_open' ) ) {
-		wp_body_open();
-	}
-	echo $body; // phpcs:ignore WordPress.Security.EscapeOutput
+		if ( function_exists( 'wp_body_open' ) ) {
+			wp_body_open();
+		}
+		echo $body; // phpcs:ignore WordPress.Security.EscapeOutput
 ?>
 <script id="carelax-rygtjek-js">
 <?php echo $js; // phpcs:ignore WordPress.Security.EscapeOutput ?>
@@ -1070,5 +1107,6 @@ RYGTJEK_JS_END;
 </body>
 </html>
 <?php
-	exit;
-} );
+		exit;
+	} );
+}

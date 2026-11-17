@@ -29,6 +29,7 @@ input,textarea,button{font-family:inherit}
 /* Header */
 .header{background:#fff;border-bottom:1px solid var(--line)}
 .header .wrap{height:80px;display:flex;align-items:center;justify-content:space-between;color:var(--ink)}
+.header .logo-link{display:block;line-height:0}
 .header .logo{height:46px;filter:brightness(0)}
 .nav{display:flex;align-items:center;gap:22px;font-size:14px;font-weight:600}
 .nav-active{border:2px solid #33b048;border-radius:3px;padding:6px 11px;font-weight:700}
@@ -362,7 +363,12 @@ textarea.input{height:76px;padding:12px 14px;resize:none}
 .f-contact{display:flex;flex-direction:column;line-height:28px;font-weight:600}
 .f-row{display:flex;align-items:center;gap:8px}
 .f-row svg{flex:none}
-.f-social{width:62px;margin-top:14px;display:block}
+.f-social{position:relative;width:62px;margin-top:14px}
+.f-social img{width:62px;display:block}
+.f-social a{position:absolute;top:0;bottom:0;width:50%}
+.f-social a:first-of-type{left:0}
+.f-social a:last-of-type{right:0}
+.f-gazelle-link{display:block;line-height:0}
 .f-links{display:flex;flex-direction:column;line-height:27px;font-weight:600}
 .f-arrow{color:#33b048}
 .f-news input{width:220px;max-width:100%;background:transparent;border:0;border-bottom:1px solid #888;color:#fff;font:inherit;font-size:13px;padding:6px 0;outline:none}

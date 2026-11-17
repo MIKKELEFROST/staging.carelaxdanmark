@@ -37,18 +37,20 @@
     ['Hvor foregår rygtjekket?', 'Hjemme hos dig. Vi kommer ud, uanset hvor i landet du bor, så du sparer transporttiden og vi kan vurdere den madras, du sover på.'],
     ['Hvad sker der, når jeg har booket?', 'Vi ringer dig op inden for 24 timer på hverdage og aftaler et tidspunkt, der passer dig.']
   ];
+  // [titel, dato, artikel på sund-forskning.dk]
+  var SF = 'https://sund-forskning.dk/artikler/';
   var MAGS = [
-    ['Madrassen: en forskel ved osteoporose og rygsmerter', '18. februar 2026'],
-    ['Fem centrale sygdomme i bevægeapparatet', '3. december 2025'],
-    ['En nyhed i Danmark til skrøbelige eller hårdt ramte rygge', '9. oktober 2025'],
-    ['Tjek dine symptomer – og pas på din ryg', '15. august 2025'],
-    ['Få scannet din ryg derhjemme', '26. maj 2025'],
-    ['Når skuldrene gør ondt', '4. februar 2025'],
-    ['Har du stenose, skal du både træne og hvile', '2. december 2024'],
-    ['Når der er smerter fra top til tå', '20. november 2024'],
-    ['Lændesmerter tærer på livskvaliteten', '19. september 2024'],
-    ['Når madrassen bliver en del af din terapi', '2. juli 2024'],
-    ['Når madrassen er en del af en livsstrategi', '16. april 2024']
+    ['Madrassen: en forskel ved osteoporose og rygsmerter', '18. februar 2026', SF + 'madrassen-en-forskel-ved-osteoporose-og-rygsmerter/'],
+    ['Fem centrale sygdomme i bevægeapparatet', '3. december 2025', SF + 'fem-centrale-sygdomme-i-bevaegeapparatet/'],
+    ['En nyhed i Danmark til skrøbelige eller hårdt ramte rygge', '9. oktober 2025', SF + 'en-nyhed-i-danmark-til-skroebelige-eller-haardt-ramte-rygge/'],
+    ['Tjek dine symptomer – og pas på din ryg', '15. august 2025', SF + 'tjek-dine-symptomer-og-pas-paa-din-ryg/'],
+    ['Få scannet din ryg derhjemme', '26. maj 2025', SF + 'faa-scannet-din-ryg-derhjemme/'],
+    ['Når skuldrene gør ondt', '4. februar 2025', SF + 'nar-skuldrene-gor-ondt/'],
+    ['Har du stenose, skal du både træne og hvile', '2. december 2024', SF + 'har-du-stenose-skal-du-bade-traene-og-hvile-feb-2025-foto-af-3-omrader-mangler/'],
+    ['Når der er smerter fra top til tå', '20. november 2024', SF + 'nar-der-er-smerter-fra-top-til-ta/'],
+    ['Lændesmerter tærer på livskvaliteten', '19. september 2024', SF + 'laendesmerter-taerer-pa-livskvaliteten/'],
+    ['Når madrassen bliver en del af din terapi', '2. juli 2024', SF + 'nar-madrassen-bliver-en-del-af-din-terapi/'],
+    ['Når madrassen er en del af en livsstrategi', '16. april 2024', SF + 'nar-madrassen-er-en-del-af-en-livsstrategi/']
   ];
 
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -254,7 +256,7 @@
   var track = $('#pressTrack');
   if (track) {
     MAGS.forEach(function (m, i) {
-      var a = el('a', 'mag'); a.href = '#';
+      var a = el('a', 'mag'); a.href = m[2]; a.target = '_blank'; a.rel = 'noopener';
       var img = el('img'); img.src = 'assets/mag' + i + '.webp'; img.alt = ''; img.loading = 'lazy';
       a.appendChild(img);
       a.appendChild(el('div', 'mag-t', m[0]));
