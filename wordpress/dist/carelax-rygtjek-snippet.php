@@ -107,6 +107,135 @@ if ( ! defined( 'CARELAX_RYGTJEK_LOADED' ) ) {
 		}
 	}
 
+	// 3b) Bookinger sendes også til Pipedrive (pipeline "Rygtjek Danmark", fase Lead) via Make-scenariet
+	//     "Carelax | Rygtjek-landingsside (hjemmeside) → Pipedrive". Mailen sendes altid først og er backup.
+	//     Kaldet til Make sker, efter svaret er sendt til den besøgende, så bookingen ikke venter på Pipedrive.
+	//     Webhook-adresse og nøgle står ikke i repoet (det er offentligt): build.py sætter dem ind fra
+	//     wordpress/secrets.local.json, eller de sættes i wp-config.php. Tomme værdier = kun mail.
+	if ( ! defined( 'CARELAX_RYGTJEK_MAKE_URL' ) ) {
+		define( 'CARELAX_RYGTJEK_MAKE_URL', '' );
+	}
+	if ( ! defined( 'CARELAX_RYGTJEK_MAKE_KEY' ) ) {
+		define( 'CARELAX_RYGTJEK_MAKE_KEY', '' );
+	}
+
+	if ( ! function_exists( 'carelax_rygtjek_make' ) ) {
+		// Sender data til Make. Returnerer Makes svar som array, eller null ved fejl.
+		function carelax_rygtjek_make( $data ) {
+			if ( ! CARELAX_RYGTJEK_MAKE_URL || ! CARELAX_RYGTJEK_MAKE_KEY ) {
+				return null;
+			}
+			$res = wp_remote_post( CARELAX_RYGTJEK_MAKE_URL, array(
+				'timeout' => 20,
+				'headers' => array( 'Content-Type' => 'application/json' ),
+				'body'    => wp_json_encode( array( 'key' => CARELAX_RYGTJEK_MAKE_KEY ) + $data ),
+			) );
+			if ( is_wp_error( $res ) || 200 !== (int) wp_remote_retrieve_response_code( $res ) ) {
+				return null;
+			}
+			$out = json_decode( (string) wp_remote_retrieve_body( $res ), true );
+			return ( is_array( $out ) && ! empty( $out['ok'] ) ) ? $out : null;
+		}
+	}
+
+	if ( ! function_exists( 'carelax_rygtjek_crm_data' ) ) {
+		// Det, der sendes til Make: kontaktoplysninger, kilde (UTM fra sidens adresse) og en note til dealen.
+		function carelax_rygtjek_crm_data( $type, $f ) {
+			if ( 'extra' === $type ) {
+				$data = array(
+					'type' => 'extra',
+					'note' => '<b>Ekstra oplysninger fra rygtjek-landingssiden</b><br>'
+						. 'Gener: ' . esc_html( $f['gener'] ? implode( ', ', $f['gener'] ) : '(ingen valgt)' ) . '<br>'
+						. ( $f['email'] ? 'E-mail: ' . esc_html( $f['email'] ) . '<br>' : '' )
+						. 'Bemærkning: ' . ( '' !== $f['note'] ? nl2br( esc_html( $f['note'] ) ) : '(ingen)' ),
+				);
+				if ( $f['email'] ) {
+					$data['email'] = $f['email'];
+				}
+				return $data;
+			}
+			$q = array();
+			wp_parse_str( (string) wp_parse_url( $f['side'], PHP_URL_QUERY ), $q );
+			$g = function ( $k ) use ( $q ) {
+				return ( isset( $q[ $k ] ) && is_string( $q[ $k ] ) ) ? mb_substr( sanitize_text_field( $q[ $k ] ), 0, 150 ) : '';
+			};
+			$kilde = $g( 'utm_source' );
+			if ( '' === $kilde && ( $g( 'gclid' ) || $g( 'gbraid' ) || $g( 'wbraid' ) ) ) {
+				$kilde = 'Google Ads';
+			} elseif ( '' === $kilde && $g( 'fbclid' ) ) {
+				$kilde = 'Meta';
+			}
+			$kampagne = 'Hjemmeside | rygtjek-landingsside' . ( $kilde ? ' | ' . $kilde : '' ) . ( $g( 'utm_campaign' ) ? ' | ' . $g( 'utm_campaign' ) : '' );
+			return array(
+				'type'        => 'booking',
+				'is_test'     => (bool) preg_match( '/^test\b/i', $f['navn'] ), // tildeles Mikkel i Make
+				'navn'        => str_replace( array( '"', '\\' ), '', $f['navn'] ),
+				'telefon'     => '+45' . $f['tlf'],
+				'postnummer'  => $f['post'],
+				'kampagne'    => $kampagne,
+				'annoncesaet' => $g( 'utm_term' ),    // Metas skabelon: utm_term = annoncesæt
+				'annoncenavn' => $g( 'utm_content' ), // og utm_content = annonce
+				'gclid'       => $g( 'gclid' ),
+				'note'        => '<b>Booking fra rygtjek-landingssiden</b><br>'
+					. 'Kender du det? (tjekliste): ' . esc_html( $f['symptomer'] ? implode( ', ', $f['symptomer'] ) : '(intet valgt)' ) . '<br>'
+					. 'Kilde: ' . esc_html( $kampagne ) . '<br>'
+					. 'Side: ' . esc_html( $f['side'] ),
+			);
+		}
+	}
+
+	if ( ! function_exists( 'carelax_rygtjek_crm' ) ) {
+		// Booking: opretter person + deal og husker deal-id'et under bookingens nøgle ($lead) i 2 timer.
+		// Ekstra: lægger en note på den samme deal (og e-mailen på personen). Returnerer true ved succes.
+		function carelax_rygtjek_crm( $type, $data, $lead ) {
+			$slot = 'carelax_rygtjek_lead_' . $lead;
+			if ( 'booking' === $type ) {
+				$out = carelax_rygtjek_make( $data );
+				if ( ! $out || empty( $out['deal_id'] ) ) {
+					return false;
+				}
+				set_transient( $slot, array( 'deal_id' => (int) $out['deal_id'], 'person_id' => (int) $out['person_id'] ), 2 * HOUR_IN_SECONDS );
+				return true;
+			}
+			if ( '' === $lead ) {
+				return false;
+			}
+			// Trin 2 kan i sjældne tilfælde nå frem, før Pipedrive har svaret på trin 1: vent lidt.
+			for ( $i = 0; $i < 4; $i++ ) {
+				if ( $i ) {
+					sleep( 3 );
+				}
+				if ( wp_using_ext_object_cache() ) {
+					$ids = wp_cache_get( $slot, 'transient', true );
+				} else {
+					wp_cache_delete( 'notoptions', 'options' );
+					wp_cache_delete( '_transient_' . $slot, 'options' );
+					wp_cache_delete( '_transient_timeout_' . $slot, 'options' );
+					$ids = get_transient( $slot );
+				}
+				if ( is_array( $ids ) && ! empty( $ids['deal_id'] ) ) {
+					return null !== carelax_rygtjek_make( $data + $ids );
+				}
+			}
+			return false;
+		}
+	}
+
+	if ( ! function_exists( 'carelax_rygtjek_finish_request' ) ) {
+		// Afslut svaret til browseren, så resten (Make-kaldet) kører i baggrunden.
+		function carelax_rygtjek_finish_request() {
+			ignore_user_abort( true );
+			if ( function_exists( 'set_time_limit' ) ) {
+				@set_time_limit( 60 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			}
+			if ( function_exists( 'fastcgi_finish_request' ) ) {
+				fastcgi_finish_request();
+			} elseif ( function_exists( 'litespeed_finish_request' ) ) {
+				litespeed_finish_request();
+			}
+		}
+	}
+
 	if ( ! function_exists( 'carelax_rygtjek_booking' ) ) {
 		function carelax_rygtjek_booking( $request ) {
 			$p  = (array) $request->get_json_params();
@@ -175,10 +304,30 @@ if ( ! defined( 'CARELAX_RYGTJEK_LOADED' ) ) {
 			if ( $email ) {
 				$headers[] = 'Reply-To: ' . $email;
 			}
-			if ( ! wp_mail( $s['to'], $subject, $body, $headers ) ) {
+			$sent = wp_mail( $s['to'], $subject, $body, $headers );
+
+			// Pipedrive. Bookingen får en tilfældig nøgle, som browseren sender med trin 2,
+			// så de ekstra oplysninger lander på den samme deal.
+			$lead = '';
+			if ( CARELAX_RYGTJEK_MAKE_URL && CARELAX_RYGTJEK_MAKE_KEY ) {
+				$lead = 'booking' === $type
+					? wp_generate_password( 20, false )
+					: substr( preg_replace( '/[^A-Za-z0-9]/', '', isset( $p['lead'] ) ? (string) $p['lead'] : '' ), 0, 40 );
+				$crm  = carelax_rygtjek_crm_data( $type, compact( 'navn', 'tlf', 'post', 'email', 'note', 'side', 'symptomer', 'gener' ) );
+				if ( $sent ) {
+					add_action( 'shutdown', function () use ( $type, $crm, $lead ) {
+						carelax_rygtjek_finish_request();
+						carelax_rygtjek_crm( $type, $crm, $lead );
+					}, 100 );
+				} else {
+					// Mailen fejlede: bookingen tæller stadig, hvis den kom i Pipedrive.
+					$sent = carelax_rygtjek_crm( $type, $crm, $lead );
+				}
+			}
+			if ( ! $sent ) {
 				return new WP_REST_Response( array( 'ok' => false, 'error' => 'mail' ), 500 );
 			}
-			return $ok;
+			return new WP_REST_Response( array( 'ok' => true, 'lead' => 'booking' === $type ? $lead : '' ), 200 );
 		}
 	}
 
@@ -984,7 +1133,8 @@ RYGTJEK_BODY_END;
   if (!cfg.press) $('[data-section="press"]').remove();
 
   // På WordPress sætter kodestykket window.CARELAX_RYGTJEK.endpoint (mail til samme modtagere som den
-  // gamle rygtjek-formular). Uden endpoint (fx Vercel-demoen) virker formularen, men intet sendes.
+  // gamle rygtjek-formular + Pipedrive via Make). Uden endpoint (fx Vercel-demoen) virker formularen,
+  // men intet sendes.
   var form = $('#form');
   var endpoint = form.dataset.endpoint || (window.CARELAX_RYGTJEK && window.CARELAX_RYGTJEK.endpoint);
   var loadedAt = Date.now();
@@ -994,7 +1144,10 @@ RYGTJEK_BODY_END;
     payload.website = form.website ? form.website.value : ''; // spamfælde
     payload.t = Date.now() - loadedAt;
     return fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); });
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json().catch(function () { return {}; });
+      });
   }
 
   // "Kender du det?" – valgte symptomer vises i formularen og sendes med bookingen
@@ -1105,7 +1258,9 @@ RYGTJEK_BODY_END;
     var btn = $('#submit1');
     btn.disabled = true;
     post({ type: 'booking', navn: booking.navn, telefon: booking.telefon, postnummer: booking.postnummer, symptomer: symSel.slice() })
-      .then(function () {
+      .then(function (res) {
+        // Nøglen til Pipedrive-dealen sendes med trin 2, så de ekstra oplysninger lander på samme deal
+        booking.lead = (res && res.lead) || '';
         if (endpoint) trackBooking();
         $('#firstName').textContent = booking.navn.split(' ')[0];
         $('#thanksTlf').textContent = booking.telefon;
@@ -1121,7 +1276,7 @@ RYGTJEK_BODY_END;
     // Intet udfyldt: spring direkte til tak
     if (!extra.gener.length && !extra.email && !extra.bemaerkning) { showStep(3); return; }
     btn.disabled = true;
-    post({ type: 'extra', navn: booking.navn, telefon: booking.telefon, postnummer: booking.postnummer,
+    post({ type: 'extra', navn: booking.navn, telefon: booking.telefon, postnummer: booking.postnummer, lead: booking.lead,
       gener: extra.gener, email: extra.email, bemaerkning: extra.bemaerkning })
       .then(function () { showStep(3); }, function () { $('#sendErr2').hidden = false; })
       .then(function () { btn.disabled = false; });

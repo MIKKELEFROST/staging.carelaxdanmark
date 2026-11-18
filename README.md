@@ -9,6 +9,9 @@ Statisk landingsside (HTML/CSS/JS). Indholdet følger Bilals "Rygtjek landingpag
 ## Formularen
 - Trin 1 (navn, telefon, postnummer + valgte punkter fra "Kender du det?") sender bookingen. Trin 2 (gener, e-mail, bemærkning) er valgfrit og sendes som en ekstra mail.
 - På WordPress sender kodestykket mails til modtagerne på Contact Form 7-formularen "Ergonomisk rygtjek" (ID 1883). Se `wordpress/snippet-template.php`.
+- Bookingen sendes også til Pipedrive (pipeline "Rygtjek Danmark", fase Lead, kanal Hjemmeside) via Make-scenariet "Carelax | Rygtjek-landingsside (hjemmeside) → Pipedrive". Konsulent fordeles på postnummer som i Google-flowet; navne der starter med "TEST" tildeles Mikkel. Kilde/UTM fra sidens adresse kommer i Kampagnenavn/Annoncesæt/Annoncenavn (utm_term/utm_content), gclid i Ad tracking, og tjeklisten som note. Trin 2 lægges som note på samme deal, og e-mailen på personen.
+- Mailen sendes altid først. Make kaldes, efter svaret er sendt til den besøgende. Fejler mailen, tæller bookingen stadig, hvis den kom i Pipedrive.
+- Webhook-adressen og nøglen er ikke i repoet (det er offentligt). De ligger i `wordpress/secrets.local.json` (ikke i git), og `build.py` laver så `wordpress/dist/carelax-rygtjek-snippet.local.php`, som er den, der skal i Snippets. `carelax-rygtjek-snippet.php` i git sender kun mail.
 - Uden endpoint (Vercel-demoen) virker formularen, men intet sendes.
 - Listerne `SYMPTOMS` og `PAINS` i `app.js` skal matche listerne i kodestykket.
 
@@ -18,7 +21,7 @@ Statisk landingsside (HTML/CSS/JS). Indholdet følger Bilals "Rygtjek landingpag
 - Vercel-demoen sender ingen tracking.
 
 ## WordPress
-`python3 wordpress/build.py` bygger `wordpress/dist/carelax-rygtjek-snippet.php` (indsættes i Snippets) og `wordpress/dist/medier/` (filer med præfiks `rygtjek-` til Medier). Ret i `index.html`, `styles.css`, `app.js` eller `wordpress/snippet-template.php`, ikke i `dist`.
+`python3 wordpress/build.py` bygger `wordpress/dist/carelax-rygtjek-snippet.local.php` (med Pipedrive, indsættes i Snippets), `wordpress/dist/carelax-rygtjek-snippet.php` (kun mail) og `wordpress/dist/medier/` (filer med præfiks `rygtjek-` til Medier). Ret i `index.html`, `styles.css`, `app.js` eller `wordpress/snippet-template.php`, ikke i `dist`.
 
 ## Trustpilot live (kun seng-anmeldelser)
 Indsæt jeres Business Unit ID i `TRUSTPILOT.businessUnitId` øverst i `app.js`. Så erstattes de glidende anmeldelser af den rigtige TrustBox, filtreret på tagget `seng`. Kræver at anmeldelserne er tagget i Trustpilot Business, og at domænet er tilladt for TrustBoxen.

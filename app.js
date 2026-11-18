@@ -61,7 +61,8 @@
   if (!cfg.press) $('[data-section="press"]').remove();
 
   // På WordPress sætter kodestykket window.CARELAX_RYGTJEK.endpoint (mail til samme modtagere som den
-  // gamle rygtjek-formular). Uden endpoint (fx Vercel-demoen) virker formularen, men intet sendes.
+  // gamle rygtjek-formular + Pipedrive via Make). Uden endpoint (fx Vercel-demoen) virker formularen,
+  // men intet sendes.
   var form = $('#form');
   var endpoint = form.dataset.endpoint || (window.CARELAX_RYGTJEK && window.CARELAX_RYGTJEK.endpoint);
   var loadedAt = Date.now();
@@ -71,7 +72,10 @@
     payload.website = form.website ? form.website.value : ''; // spamfælde
     payload.t = Date.now() - loadedAt;
     return fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); });
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json().catch(function () { return {}; });
+      });
   }
 
   // "Kender du det?" – valgte symptomer vises i formularen og sendes med bookingen
@@ -182,7 +186,9 @@
     var btn = $('#submit1');
     btn.disabled = true;
     post({ type: 'booking', navn: booking.navn, telefon: booking.telefon, postnummer: booking.postnummer, symptomer: symSel.slice() })
-      .then(function () {
+      .then(function (res) {
+        // Nøglen til Pipedrive-dealen sendes med trin 2, så de ekstra oplysninger lander på samme deal
+        booking.lead = (res && res.lead) || '';
         if (endpoint) trackBooking();
         $('#firstName').textContent = booking.navn.split(' ')[0];
         $('#thanksTlf').textContent = booking.telefon;
@@ -198,7 +204,7 @@
     // Intet udfyldt: spring direkte til tak
     if (!extra.gener.length && !extra.email && !extra.bemaerkning) { showStep(3); return; }
     btn.disabled = true;
-    post({ type: 'extra', navn: booking.navn, telefon: booking.telefon, postnummer: booking.postnummer,
+    post({ type: 'extra', navn: booking.navn, telefon: booking.telefon, postnummer: booking.postnummer, lead: booking.lead,
       gener: extra.gener, email: extra.email, bemaerkning: extra.bemaerkning })
       .then(function () { showStep(3); }, function () { $('#sendErr2').hidden = false; })
       .then(function () { btn.disabled = false; });
